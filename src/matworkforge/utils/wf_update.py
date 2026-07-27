@@ -6,7 +6,7 @@ Changelog:
     12-9-25: Rewrote to pull from Github. 
 """
 #import modules
-from lco_workflow import version
+from matworkforge import version
 import os
 import sys
 import subprocess as sp

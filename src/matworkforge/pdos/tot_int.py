@@ -44,7 +44,7 @@ def get_all_data(base_dir):
         with open(os.path.join(pdos_dir,'integrated-pdos.csv'),'r') as p:
             lines = p.readlines()
         t_lines = lines[1:]
-        t_data = [[mod_name,'e_tot','OS','spin','H d/p','']]
+        t_data = [[mod_name,'e_tot','OS','spin','']]
         for x in t_lines:
             x_list = x.split(',')
             ele = x_list[0]
@@ -57,14 +57,6 @@ def get_all_data(base_dir):
         tot_data.append(pd.DataFrame(t_data))
         
     df = pd.concat(tot_data,axis=1)
-    df.to_csv('./tot-int-pdos.csv',index=False, header=False)
-    
-    
-    
-def sort_by_index(data):
-    '''For sorting the lists of data by the atom index rather than by element'''
-    data_list = data.split(',')
-    if len(data_list) == 7:
-        index = int(data_list[1])
-        return index
+    df.to_csv('./total-integrated-pdos.csv',index=False, header=False)
+
 

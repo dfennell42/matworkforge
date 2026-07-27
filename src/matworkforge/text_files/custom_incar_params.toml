@@ -3,6 +3,7 @@
 ENCUT = 520
 ISIF = 3
 ISMEAR = 0
+LDAU = false
 SIGMA = 0.05
 EDIFF = 1e-5
 EDIFFG = -0.02

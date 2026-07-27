@@ -12,7 +12,7 @@ Changelog:
 #import modules
 import os
 import shutil
-from lco_workflow.job_handling.check_contcar import check_contcar
+from matworkforge.job_handling.check_contcar import check_contcar
 #define functions
 def copy_vasp_files(source_dir, dest_dir):
     """Copies essential VASP input files from source to destination."""
@@ -43,18 +43,6 @@ def create_pdos(input_dir,base_directory):
     if os.path.exists(f'{input_dir}/PDOS/CONTCAR'):
         check_contcar(input_dir)
         os.rename(f'{input_dir}/PDOS/CONTCAR',f'{input_dir}/PDOS/POSCAR')
-    
-    #Copy PDOS_INCAR.txt file - has to be separate as it is not in Modification_# dir
-    #copy from package to base dir
-    userdir = os.path.expanduser('~/wf-user-files')
-    fullpath = os.path.join(userdir, 'PDOS_INCAR.txt')
-    shutil.copy(fullpath, base_directory)
-    #copy from base dir to mod dir
-    for file in os.listdir(base_directory):
-        if file == "PDOS_INCAR.txt":
-            src_file = os.path.join(base_directory, file)
-            dest_file = os.path.join(output_dir, file)
-            shutil.copy2(src_file, dest_file)
             
 def process_vasp_inputs(base_directory):
     """Processes all VASP_inputs directories recursively, applying the same modifications to each."""

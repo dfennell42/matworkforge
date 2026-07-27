@@ -1,5 +1,6 @@
 import os
 import shutil
+import toml
 # Define element-specific magnetic moments
 
 def read_poscar(filename):
@@ -119,29 +120,45 @@ def find_files_recursive(pattern, mod):
                     matched_files.append(os.path.join(root, file))
     return matched_files
 
-def process_poscar_files(mod = None, ignore_sym=False):
+def get_incar_params():
+    '''Gets custom incar parameters from wf-user-files directory'''
+    userdir = os.path.expanduser('~/wf-user-files')
+    param_file = os.path.join(userdir,'custom_incar_params.toml')
+    custom_incar_params = toml.load(param_file)
+    return custom_incar_params
+
+def process_poscar_files(settings,mod = None):
     # Find all POSCAR files with the pattern POSCAR_modified_*.vasp
     poscar_files = find_files_recursive("POSCAR_",mod)
     poscar_files = [file for file in poscar_files if file.endswith(".vasp")]
-
+    
     if not poscar_files:
         print("No POSCAR_*.vasp files found!")
         return
 
     print(f"Found {len(poscar_files)} files.")
     
-    #def spin file
-    if ignore_sym == False:
-        spin_file = "SpinPairs.txt"
-    elif ignore_sym == True:
-        spin_file = 'SpinPairs-HEO.txt'
+    #check INCAR params to see if running spin polarized
+    custom_incar_params = get_incar_params()
+    set_params = settings['incar-params']
+    if len(set_params) >0:
+        custom_incar_params.update(set_params)
+    
+    if 'ISPIN' in custom_incar_params.keys():
+        if custom_incar_params.get('ISPIN') == 1:
+            print('Calculations are not spin polarized. MAGMOM not required.')
+            return
+        
+    ignore_sym = settings['ignore-symmetry']
+    spin_file = settings['spin-file']
+    
     #copy SpinPairs file to dir
     userdir = os.path.expanduser('~/wf-user-files')
     fullpath = os.path.join(userdir, spin_file)
     shutil.copy(fullpath, os.getcwd())
     
     if not os.path.exists(spin_file):
-        print("SpinPairs.txt not found in the directory.")
+        print(f"{spin_file} not found in the directory.")
         return
 
     for poscar_file in poscar_files:

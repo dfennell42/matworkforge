@@ -5,7 +5,12 @@ spin-file = "SpinPairs.txt"
 submit-file = "vasp.sh"
 #ignore symmetry?
 ignore-symmetry = false
-
+#kpoint settings
+[kpoints]
+#style can be monkhorst or gamma
+style = 'gamma'
+kpoint-grid = [2,2,2]
+shift = [0,0,0]
 #Add calculation specific incar parameters here. These values will override custom_incar_params.txt/PDOS_INCAR.txt.
 #If these tables are empty, params will come from appropriate file in ~/wf-user-files
 [incar-params]

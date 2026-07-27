@@ -2,45 +2,50 @@
 Modify INCAR for PDOS calculations
 Author: Dorothea Fennell
 Changelog: 
-    4-23-25: Created, comments added 
+    4-23-25: Created, comments added
+    7-21-26: Updated to use Incar class & pull from pdos_incar_params.toml
 """
 #import modules
 import os
+import toml
+from pymatgen.io.vasp import Incar
 
-# Find PDOS_INCAR.txt file in the PDOS directory
-def find_incar_file(modification_dir):
-    # Look for the _INCAR.txt file in the current directory
-    for file in os.listdir(modification_dir):
-        if file.endswith("_INCAR.txt"):
-            return os.path.join(modification_dir, file)
-    return None
+def get_pdos_params():
+    userdir = os.path.expanduser('~/wf-user-files')
+    fullpath = os.path.join(userdir, 'pdos_incar_params.toml')
+    pdos_params = toml.load(fullpath)
+    return pdos_params
 
 #Modify the INCAR file for PDOS calculations
-def modify_incar(incar_path, pdos_incar_file):
+def modify_incar(base_dir,incar_path, pdos_params):
     """Modifies the INCAR file for PDOS calculations"""
     with open(incar_path, "r") as incar:
         incar_lines = incar.readlines()
     
-    #Gets correct lines from PDOS_INCAR.txt file
-    with open(pdos_incar_file, "r") as pdos:
-        pdos_lines = pdos.readlines()
+    #Gets params from settings.toml file
+    settings = toml.load(f'{base_dir}/settings.toml')
+    set_params = settings['pdos-params']
+    if len(set_params) > 0:
+        pdos_params.update(set_params)
+    
+    #create incar file
+    incar = Incar(pdos_params)
     
     #Saves magmom line from current INCAR file
     for line in incar_lines:
         if line.strip().startswith("MAGMOM"):
-            magmom_line = line.strip()
-   
-    #checks if INCAR contains ISYM = -1
+            magmom_line = line.strip(' \n')
+    
+    #convert magmom line
+    mm = magmom_line.split('=')
+    #update incar
+    incar.update({'MAGMOM':str(mm[1].strip())})
+    
+    #checks if INCAR contains ISYM
     for line in incar_lines:
         if line.strip().startswith('ISYM'):
-            pdos_lines.append(f'\n{line}')
-            
-    #adds the magmom line to pdos_lines
-    pdos_lines.append(f"\n{magmom_line}")
-
-    #write correct INCAR file
-    with open(incar_path, "w") as incar:
-        incar.writelines(pdos_lines)
+            ls = line.strip(' \n').split('=')
+            incar.update({'ISYM':ls[1].strip()})
     
     print(f"Updated INCAR in {incar_path}")
     #print(magmom_line)
@@ -50,9 +55,7 @@ def process_pdos_dirs(base_directory):
     """Finds all PDOS directories and edits their INCAR files."""
     for root, dirs, files in os.walk(base_directory):
         if "INCAR" in files:
-            if root.endswith("PDOS") and 'CLEAN' not in root:
-                pdos_incar_file = find_incar_file(root)
-                if pdos_incar_file:
-                    modify_incar(os.path.join(root, "INCAR"), pdos_incar_file)
-                else:
-                    print(f"_INCAR.txt file not found in {root}")
+            if root.endswith("PDOS"):
+                pdos_params = get_pdos_params()
+                modify_incar(base_directory,os.path.join(root, "INCAR"), pdos_params)
+                

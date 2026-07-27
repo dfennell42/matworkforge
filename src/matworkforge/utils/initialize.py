@@ -17,7 +17,7 @@ def copy_files(source_dir, dest_dir):
     """Copies files from source to destination."""
     os.makedirs(dest_dir, exist_ok=True)  # Ensure the target directory exists
     # List of files to copy
-    FILES_TO_COPY = ["BulkE_dict.txt", "MagMom_dict.txt", "PDOS_INCAR.txt","custom_incar_params.txt", "base_settings.toml"]
+    FILES_TO_COPY = ["BulkE_dict.txt", "MagMom_dict.txt", "pdos_incar_params.toml","custom_incar_params.toml", "base_settings.toml"]
     for file in FILES_TO_COPY:
         src_file = os.path.join(source_dir, file)
         dest_file = os.path.join(dest_dir, file)
@@ -42,7 +42,7 @@ def make_wf_dir(source_dir):
 def init_settings():
     '''Initialize settings and files'''
     #set up source dir
-    pkgdir = sys.modules['lco_workflow'].__path__[0]
+    pkgdir = sys.modules['matworkforge'].__path__[0]
     #set psuedo path
     print('\n Please input path to VASP pseudopotentials.')
     pot_path = input('Path:')

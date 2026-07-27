@@ -2,15 +2,10 @@ from ase.io import read, write
 import os
 import copy
 import shutil
-
-# Save pairs to text files
-def save_pairs_to_file(pairs, filename):
-    with open(filename, 'w') as file:
-        for pair in pairs:
-            file.write(f"{pair[0]},{pair[1]}\n")
+from .list_sites import read_pairs, get_pairs
 
 # Replace Co according to ModsCo.txt
-def modify_pairs(atoms,atom_pairs):
+def modify_pairs(atoms,atom_pairs,mods_file,ignore_sym=False):
     def read_modifications(filename):
         modifications = []
         with open(filename, 'r') as file:
@@ -21,15 +16,20 @@ def modify_pairs(atoms,atom_pairs):
                 modifications.append((pair_indices, new_elements))
         return modifications
 
-    modifications = read_modifications("Mods.txt")
+    modifications = read_modifications(mods_file)
 
-    for mod_index, (pair_indices, new_elements) in enumerate(modifications):
+    for mod_index, (indices, new_elements) in enumerate(modifications):
         modified_atoms = copy.deepcopy(atoms)
-        for i, pair_index in enumerate(pair_indices):
-            if pair_index < len(atom_pairs):
-                index1, index2 = atom_pairs[pair_index]
-                modified_atoms[index1].symbol = new_elements[i]
-                modified_atoms[index2].symbol = new_elements[i]
+        #modify based on symmetry
+        if ignore_sym == False:
+            for i, pair_index in enumerate(indices):
+                if pair_index < len(atom_pairs):
+                    index1, index2 = atom_pairs[pair_index]
+                    modified_atoms[index1].symbol = new_elements[i]
+                    modified_atoms[index2].symbol = new_elements[i]
+        elif ignore_sym == True:
+            for i, idx in enumerate(indices):
+                modified_atoms[idx].symbol = new_elements[i]
         
         # Make new directory for each new structure
         directory_name = f"Modification_{mod_index + 1}"
@@ -39,55 +39,34 @@ def modify_pairs(atoms,atom_pairs):
         write(output_filename, modified_atoms, format="vasp")
         print(f"Modified POSCAR saved in directory {directory_name} as {output_filename}.")
 
-def modify_structure(base_dir):
+def modify_structure(base_dir,settings,ignore_sym):
     '''Modifies structures based of user input. '''
     userdir = os.path.expanduser('~/wf-user-files')
-    fullpath = os.path.join(userdir, 'POSCAR')
-    shutil.copy(fullpath, base_dir)
+    poscar = settings['poscar-file']
+    fullpath = os.path.join(userdir, poscar)
+    shutil.copy(fullpath, os.path.join(base_dir,'POSCAR'))
     # Read POSCAR 
     atoms = read(os.path.join(base_dir,'POSCAR'))
     #print('atoms read')
-
-    # Define number of each element in POSCAR
-    with open(os.path.join(base_dir,'POSCAR'), 'r') as P:
-        P_lines = P.readlines()
-    
-    e_line = P_lines[5]
-    elements = e_line.split()
-    c_line = P_lines[6]
-    counts = c_line.split()
-    element_counts = {}
-    pairs = {}
-    for i,element in enumerate(elements):
-        element_counts.update({f'{element}':float(f'{counts[i]}')})
-        pairs.update({f'{element}_pairs':[]})
-    # Store pairs by element
-    index = 0  
-
-    # Loop through each element and its count
-    for element, count in element_counts.items():
-        # Pair consecutive atoms of this element
-        for i in range(int(count) // 2):
-            # Append the pair to the appropriate list based on the element type
-            pair = (index, index + 1)
-            if f'{element}_pairs' in pairs:
-                pairs[f'{element}_pairs'].append(pair)
-
-            index += 2  # Move to the next pair
-    #save pairs to file
-    for element in pairs.keys(): 
-        save_pairs_to_file(pairs[f'{element}'], f'{element}.txt')
-        print(f"Pairs saved to {element}.txt.")
-    
+    sym = atoms.symbols
+    elements = sym.species()
     #modify based on input
     print('Which element would you like to modify?')
     for i,element in enumerate(elements):
         print(f'{i+1}:{element}')
     choice = input("Enter the number of your choice: ")
-    
+    #read settings
+    mods_file = settings['mods-file']
+    #modify
     for i,element in enumerate(elements,1):
-        if float(choice) == i and f'{element}_pairs' in pairs:
-            modify_pairs(atoms, pairs[f'{element}_pairs'])
+        if float(choice) == i:
+            try: 
+                pairs = read_pairs(base_dir, element)
+            except FileNotFoundError:
+                get_pairs()
+                pairs = read_pairs(base_dir, element)
+            finally:
+                modify_pairs(atoms, pairs,mods_file,ignore_sym)
             
 #if __name__ == "__main__":
    # base_dir = os.getcwd()

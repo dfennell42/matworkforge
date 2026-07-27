@@ -2,30 +2,18 @@
 Extract electronic and structural decriptors for ML
 Author: Dorothea Fennell
 Changelog:
-    7-9-25: Created, comments added
-    7-11-25: Added funcs for electronegativity, band center, bond lengths and formation energy.
-    7-14-25: Added funcs for t2g/e_g resolved dos and getting pdos data. Set most funcs to return pandas series and began extract.
-    7-16-25: Finished extract function and finished script.
-    8-20-25: Added function to extract ionization energy and polarizability. Added ability to get difference between O2p band center and conduction band minimum
-    11-7-25: Updating integration
-    12-5-25: Added func to extract Eovac from binary metal oxides
-    1-27-26: Added func to get avg intensity of occupied PDOS regions for LCE
-    2-3-26: Added std. reduction potential descriptor. Added avg_ion_e to function getting ionization energy. Added section to calculate
-            average band centers & widths for LCE.Also added section to get calculated # of electrons for new potential descriptor. 
-            Added func to calculate electron and avg pdos intensity weighted descriptors. 
-    3-6-26: Added section to calculate Vo, Vm, Vo-m, & Eoxm. 
-    6-22-26: Added line to ignore warnings using warnings module.
+    7-23-26: Rewrote for v1.0
 """
 #import modules
-from pymatgen.io.vasp import Vasprun, Outcar
-from pymatgen.electronic_structure.core import OrbitalType, Spin
 import os
 import warnings
-from ase.io import read
-from ase.formula import Formula
-import numpy as np
 import pandas as pd
-from scipy.integrate import simpson 
+from pymatgen.io.vasp import Vasprun, Outcar
+from matworkforge.utils.settings import read_settings
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.structure import Structure
+from pymatgen.electronic_structure.core import OrbitalType
+import numpy as np
 #define functions
 def read_file(r_dir, file):
     '''Reads given file in directory and returns list of lines'''
@@ -38,26 +26,26 @@ def sort_mods(data):
     num = data.split('_')[1]
     return int(num)
 
-def get_dirs(base_dir, ask = True):
+def get_dirs(base_dir):
     '''Gets list of PDOS directories.'''
     pdos_dirs=[]
-    if ask == True:
-        print("\nWould you like to extract descriptors for pristine, vacancy, or adsorption structures?")
-        print("1: Pristine")
-        print("2: Vacancy")
-        print("3: Adsorption")
-        struc = input("Enter the number of your choice: ")
-        if struc == '1':
-            base = 'VASP_inputs/PDOS'
-        elif struc == '2':
-            base = '_Removed/PDOS'
-        elif struc == '3':
-            base = '_Added/PDOS'
-        else:
-            base = 'PDOS'
-    elif ask == False:
-        base = 'PDOS'
-        
+    print("\nWhich structures would you like to extract descriptors for?")
+    print('1: All')
+    print("2: Pristine")
+    print("3: Vacancy")
+    print("4: Adsorption")
+    struc = input("Enter the number of your choice: ")
+    if struc == '1':
+        base = '/PDOS'
+    elif struc == '2':
+        base = 'VASP_inputs/PDOS'
+    elif struc == '3':
+        base = '_Removed/PDOS'
+    elif struc == '4':
+        base = '_Added/PDOS'
+    else:
+        base = '/PDOS'
+    
     for root, dirs, files in os.walk(base_dir):
         if root.endswith(base) and 'integrated-pdos.csv' in files:
             pdos_dirs.append(root)
@@ -72,34 +60,6 @@ def get_dirs(base_dir, ask = True):
     pdos_dirs.sort(key=sort_dirs)
     return pdos_dirs,base
 
-def get_atoms(file):
-    '''Determine atome indices'''
-    #read file
-    atoms = read(file)
-    #get formula
-    sym = atoms.get_chemical_formula()
-    f = Formula(sym)
-    atom_counts = f.count()
-    #determine number of removed atoms
-    if 'Li' in atom_counts.keys():
-        li = 18 - atom_counts.get('Li')
-    else:
-        li = 18
-    if 'O' in atom_counts.keys():
-        o = 36 - atom_counts.get('O')
-    else:
-        o = 36
-    atom_rem = li + o
-    #determine indices
-    o_idx = 43 - atom_rem
-    m_idxs = [(21 - li), (23 - li), (25 - li)]
-    if li == 18:
-        lix = 0
-    else:
-        lix = 1 - (0.055*li)
-    
-    return atoms, o_idx, m_idxs, lix
-
 def band_gap(vasprun):
     '''Gets the band gap for the vasprun.xml file.'''
     # Get band structure and band gap
@@ -113,16 +73,18 @@ def band_gap(vasprun):
 def get_form_en(vasprun):
     '''Computes energy of formation.'''
     # Reference energies in eV/atom
-    ref_energies = {
-        "O": -9.03 / 2,  # O2 molecule → per atom
-        "Li": -1.9072204,
-        "Ni": -5.469965403,
-        "Mn": -8.998062074,
-        "Co": -6.8377063,
-        "Fe": -8.243958785,
-        "Al": -3.764685413,
-        "Ga": -2.913762123,
-    }
+    userdir = os.path.expanduser('~/wf-user-files')
+    bulk_dict = read_file(userdir, 'BulkE_dict.txt')
+    #create dict
+    ref_energies={}
+    for l in bulk_dict:
+        #ignore comment line
+        if l.startswith('#'):
+            pass
+        else:
+            ls = l.split(':')
+            ref_energies.update({ls[0].strip():float(ls[1].strip())})
+    
     #read vasprun.xml, get final structure, energy & composition
     struc = vasprun.final_structure
     tot_en = vasprun.final_energy
@@ -134,451 +96,132 @@ def get_form_en(vasprun):
     form_en = tot_en - ref_energy
     return form_en
 
-def get_band_center(vasprun,m_idxs,o_idx,cbm):
-    '''Gets d_band centers from vasprun.xml'''
-    #get structure
-    struc = vasprun.final_structure
-    all_sites = struc.sites
-    #get dos
+def get_species_desc(vasprun):
+    '''Get descriptors for each species in structure.'''
+    struc = vasprun.structures[-1]
+    species = list(struc.chemical_system_set)
+    species.sort()
     dos = vasprun.complete_dos
-    #get sites & band centers 
-    band_centers = {}
-    val_full = 0
-    val_occ = 0
-    val_unocc = 0
-    bw_full = 0
-    bw_occ = 0
-    for i, site in enumerate(all_sites):
-        if i in m_idxs:
-            if site.label in ('Al','Ga'):
-                site_list=[site]
-                bc = dos.get_band_center(band=OrbitalType(1),sites=site_list)
-                bc_occ = dos.get_band_center(band=OrbitalType(1),sites=site_list,erange=(float('-inf'),0))
-                bc_unocc = dos.get_band_center(band=OrbitalType(1),sites=site_list,erange=(0,float('inf')))
-                band_width = dos.get_band_width(band=OrbitalType(1),sites=site_list)
-                occ_bw = dos.get_band_width(band=OrbitalType(1),sites=site_list, erange=(float('-inf'),0))
-                band_centers.update({f'{i}_bc_full':bc,f'{i}_bc_occ':bc_occ,f'{i}_bc_unocc':bc_unocc,f'{i}_band_width':band_width, f'{i}_occ_bw':occ_bw})
+    spec_data = {}
+    #loop over species
+    for spec in species:
+        ele = Element(spec)
+        z = ele.Z
+        chi = ele.X
+        ion_e = ele.ionization_energy
+        #get element band center/width
+        ele_bc = dos.get_band_center(band=OrbitalType(ele.valence[0]),elements=[ele])
+        ele_bw = dos.get_band_width(band=OrbitalType(ele.valence[0]),elements=[ele])
+        #add to dict
+        spec_data.update({f'{spec}_Z':z,f'{spec}_chi':chi,f'{spec}_ion_e':ion_e,f'{spec}_band_center':ele_bc,f'{spec}_band_width':ele_bw})
+    #convert dict to series
+    spec_ser = pd.Series(spec_data)
+    return spec_ser
+
+def chk_idxs(base_dir,pdos_dir,idxs):
+    '''Adjusts idxs based on vacancies.'''
+    #get path for pris dir
+    parts = pdos_dir.split('/')
+    new_path = ''
+    for p in parts:
+        new_path += f'{p}/'
+        if p == 'VASP_inputs':
+            break
+    #get initial structure
+    sites = Structure.from_file(f'{pdos_dir}/POSCAR').sites
+    #get pris structure
+    pris_sites = Structure.from_file(f'{new_path}CONTCAR').sites
+    #check for vacancies
+    vacs = [i for i,x in enumerate(pris_sites) if x not in sites]
+    #if there are vacs, check if the indices are before or after the selected sites
+    if len(vacs) >0:
+        chk = [any(x>=v for x in idxs) for v in vacs]
+        if any(chk) == True:
+            #check if sites have been removed
+            mis = []
+            for x in idxs:
+                if any(x==v for v in vacs):
+                    print_path = pdos_dir.replace(f'{base_dir}','.')
+                    print(f'Atom {x} has been removed from structure in {print_path} and will be skipped.')
+                    mis.append(x) 
+            if len(idxs) == len(mis):
+                #if all sites are missing
+                return None
             else:
-                site_list=[site]
-                bc = dos.get_band_center(sites=site_list)
-                bc_occ = dos.get_band_center(sites=site_list,erange=(float('-inf'),0))
-                bc_unocc = dos.get_band_center(sites=site_list,erange=(0,float('inf')))
-                band_width = dos.get_band_width(sites=site_list)
-                occ_bw = dos.get_band_width(sites=site_list, erange=(float('-inf'),0))
-                band_centers.update({f'{i}_bc_full':bc,f'{i}_bc_occ':bc_occ,f'{i}_bc_unocc':bc_unocc,f'{i}_band_width':band_width,f'{i}_occ_bw':occ_bw})
-            val_full += bc
-            val_occ += bc_occ
-            val_unocc += bc_unocc
-            bw_full += band_width
-            bw_occ += occ_bw
-        if i == o_idx:
-            site_list=[site]
-            bc = dos.get_band_center(band=OrbitalType(1),sites=site_list)
-            bc_occ = dos.get_band_center(band=OrbitalType(1),sites=site_list,erange=(float('-inf'),0))
-            bc_unocc = dos.get_band_center(band=OrbitalType(1),sites=site_list,erange=(0,float('inf')))
-            band_width = dos.get_band_width(band=OrbitalType(1),sites=site_list)
-            occ_bw = dos.get_band_width(band=OrbitalType(1),sites=site_list, erange=(float('-inf'),0))
-            bc_cbm_diff = cbm - bc
-            band_centers.update({'O(p)_bc_full':bc,'O(p)_bc_occ':bc_occ,'O(p)_bc_unocc':bc_unocc, 'O(p)_cbm_diff':bc_cbm_diff,'O(p)_band_width':band_width, 'O(p)_occ_bw':occ_bw})
-    
-    avg_val_full = val_full/3
-    avg_val_occ = val_occ/3
-    avg_val_unocc = val_unocc/3
-    avg_band_width = bw_full/3
-    avg_bw_occ = bw_occ/3
-    full_bc_diff = avg_val_full - band_centers['O(p)_bc_full']
-    occ_bc_diff = avg_val_occ - band_centers['O(p)_bc_occ']
-    avg_bc = pd.Series({'avg_val_full':avg_val_full,'avg_val_occ':avg_val_occ,'avg_val_unocc':avg_val_unocc,'avg_band_width':avg_band_width,'avg_bw_occ':avg_bw_occ,'full_bc_diff':full_bc_diff, 'occ_bc_diff':occ_bc_diff})
-    bc_ser = pd.Series(band_centers)
-    return bc_ser, avg_bc
-
-def get_eln(atoms, m_idxs):
-    '''Gets electronegativity descriptors'''
-    # Descriptor table (no d-electrons)
-    metal_data = {
-        'Li': {'Z': 3,  'chi': 0.98, 'radius': 1.28},
-        'Al': {'Z': 13, 'chi': 1.61, 'radius': 1.21},
-        'Mn': {'Z': 25, 'chi': 1.55, 'radius': 1.39},
-        'Fe': {'Z': 26, 'chi': 1.83, 'radius': 1.32},
-        'Co': {'Z': 27, 'chi': 1.88, 'radius': 1.26},
-        'Ni': {'Z': 28, 'chi': 1.91, 'radius': 1.24},
-        'Ga': {'Z': 31, 'chi': 1.81, 'radius': 1.22}
-    }
-    #base variables
-    chi_O = 3.44
-    eln_data = {}
-    eln_sum = 0
-    #calculate delta chi
-    for idx in m_idxs:
-        symbol = atoms[idx].symbol
-        props = metal_data[symbol]
-        delta_chi = chi_O - props['chi']
-        eln_data.update({f'{idx}_chi':delta_chi})
-    
-    #get string & sum
-    for x in eln_data.values():
-        eln_sum += float(x)
-    #get average
-    eln_avg = eln_sum/3
-    eln_data.update({'sum_chi':eln_sum,'avg_chi':eln_avg})
-    eln = pd.Series(eln_data)
-    return eln
-
-def bond_lengths(atoms, o_idx, m_idxs):
-    '''Get bond lengths between oxygen and three bonded metals.'''
-    bond_lengths = {}
-    for i in m_idxs:
-        dist = atoms.get_distance(o_idx, i, mic=False)
-        bond_lengths.update({f'O_M{i}':dist})
-    
-    bl_sum = 0
-    for i in bond_lengths.values():
-        bl_sum += float(i)
-    bl_avg = bl_sum/3
-    bond_lengths.update({'BL_avg':bl_avg})
-    bl_ser = pd.Series(bond_lengths)
-    return bl_ser
-
-def int_pdos(energy, up, down):
-    """Integrates PDOS in specified windows."""
-    #get bottom of integration window
-    for x in range(len(energy)):
-        if energy[x] >= -8:
-            a = x
-            break
-    #get top of integration window
-    for x in range(len(energy)):
-        if energy[x] > 0:
-            b = x
-            break
-    
-    #split arrays
-    els = np.split(energy,[a,b])
-    uls = np.split(up,[a,b])
-    dls = np.split(down,[a,b])
-    e_win = els[1]
-    u_win = uls[1]
-    d_win = dls[1]
-    #integrate
-    up_e = simpson(u_win,x=e_win)
-    down_e = simpson(d_win, x=e_win)
-    tot_e = up_e + np.abs(down_e)
-    return tot_e
-
-def t2g_eg_dos(vasprun,m_idxs):
-    '''Gets site t2g & e_g projected DOS and integrates.'''
-    #get data from vasprun
-    struc = vasprun.final_structure
-    all_sites = struc.sites
-    dos = vasprun.complete_dos
-    
-    #set up list
-    t2g_eg_dict ={}
-    al_dict = {}
-    #get dos data
-    for i, site in enumerate(all_sites):
-        if i in m_idxs:
-            if site.label in ('Al','Ga'):
-                al_dict.update({f'{i}_t2g':0,f'{i}_eg':0})
-            else: 
-                bc = dos.get_site_t2g_eg_resolved_dos(site=site)
-                t2g = bc['t2g'].as_dict()
-                eg = bc['e_g'].as_dict()
-                #integrate data
-                t2g_en = np.subtract(t2g['energies'],t2g['efermi'])
-                t2g_data = t2g['densities']
-                eg_data = eg['densities']
-                eg_en = np.subtract(eg['energies'],eg['efermi'])
-                t2g_tot_e = int_pdos(t2g_en, t2g_data['1'], t2g_data['-1'])
-                eg_tot_e = int_pdos(eg_en,eg_data['1'],eg_data['-1'])
-                t2g_eg_dict.update({f'{i}_t2g':t2g_tot_e,f'{i}_eg':eg_tot_e})
-    
-    if len(t2g_eg_dict) < 6:
-        t2g_eg_dict.update(al_dict)
-    t2g_eg = pd.Series(t2g_eg_dict)
-    return t2g_eg
-    
-def get_pdos_data(pdos_dir,m_idxs):
-    '''Gets data from integrated-pdos.csv'''
-    #read csv
-    if os.path.exists(os.path.join(pdos_dir,'integrated-pdos.csv')): 
-        df = pd.read_csv(os.path.join(pdos_dir,'integrated-pdos.csv'))
+                new_idxs = [(x-chk.count(True)) if x > np.array(vacs).min() else x for x in idxs if x not in mis]
+        else:
+            new_idxs = idxs            
     else:
-        print('PDOS not integrated. Please integrate data before continuing.')
-        return
-    #if atom index column not in df
-    if 'Atom index' not in df.columns:
-        elements = []
-        idxs = []
-        for atom in df['Atom']:
-            index = ''
-            for char in atom:
-                if char.isdigit():
-                    index +=f'{char}'
-            ele = atom.strip('0123456789')
-            elements.append(ele)
-            idxs.append(float(index))
-        df.insert(1,'Element',elements)
-        df.insert(2,'Atom index',idxs)
-    
-    sel_df = df.query('`Atom index` in @m_idxs')      
-    sel_sum = sel_df.sum(numeric_only=True)
-    sums = df.sum(numeric_only=True) 
-    elements = sel_df['Element']
-    atomic_numbers = {
-        'Al':13,
-        'Mn':25,
-        'Fe':26,
-        'Co':27,
-        'Ni':28,
-        'Ga':31,
-        }
-    Z_sum=0
-    #get 3Z
-    for e in elements:
-        if e in atomic_numbers.keys():
-            Z_sum += atomic_numbers[f'{e}']
-            
-    #create series for 3z
-    Z = pd.Series(data={'3Z':Z_sum})
-    #get # of electrons for LCE
-    LCE_elec = {}
-    for i in sel_df.index:
-        elec = sel_df.at[i,'e_tot']
-        idx = sel_df.at[i,'Atom index']
-        LCE_elec.update({f'{idx}_elec':elec})
-    elec_ser = pd.Series(LCE_elec)
-    #drop unnecessary items
-    sel_sum =sel_sum.drop(index=['Atom index','e_tot'])
-    sums = sums.drop(index='Atom index')
-    #reindex
-    sel_sum = sel_sum.rename({'OS':'3OS','spin':'3S','H d/p':'3Hdp'})
-    sums = sums.rename({'OS':'tot_OS','spin':'tot_S','H d/p':'tot_Hdp'})
-    #concatenate pd Series
-    pdos_data = pd.concat([sel_sum,Z,sums])
-    return pdos_data,elec_ser
+         new_idxs = idxs
+    return new_idxs
 
-def get_ion_e_pol(vasprun,m_idxs):
-    '''Gets first ionization energy and polarizability'''
-    struc = vasprun.final_structure
-    all_sites = struc.sites
-    
-    pol_dict={
-        'Al':{'val':57.8, 'stddev':1.0},
-        'Mn':{'val':68, 'stddev':9},
-        'Fe':{'val':62, 'stddev':4},
-        'Co':{'val':55, 'stddev':4},
-        'Ni':{'val':49, 'stddev':3},
-        'Ga':{'val':50, 'stddev':3},
-        }
-    ion_pol_data = {}
-    sum_ion_e = 0
-    for i,site in enumerate(all_sites):
-        if i in m_idxs:
-            ele = site.specie
-            ion_e = ele.ionization_energy
-            sum_ion_e += ion_e
-            if site.label in pol_dict.keys():
-                pol_data = pol_dict[site.label]
-                val = pol_data['val']
-                stddev = pol_data['stddev']
-                min_pol = val - stddev
-                max_pol = val + stddev
-            ion_pol_data.update({f'{i}_ion_e':ion_e,f'{i}_min_pol':min_pol,f'{i}_pol':val,f'{i}_max_pol':max_pol})
-    avg_ion_e = sum_ion_e/3
-    ion_pol_data.update({'avg_ion_e':avg_ion_e})
-    ion_pol_ser = pd.Series(ion_pol_data)
-    return ion_pol_ser
-
-def get_binary_evac(vasprun,m_idxs):
-    '''Gets O vacancy energy from binary metal oxide for each metal species in LCE'''
-    struc = vasprun.final_structure
-    all_sites = struc.sites
-    
-    binary_dict={
-        'Al':6.91638435,
-        'Mn':3.28671184,
-        'Fe':3.778409415,
-        'Co':2.48314856,
-        'Ni':2.02617786,
-        'Ga':4.596923115,
-        }
-    binary_evac_data = {}
-    sum_bin_evac = 0
-    for i,site in enumerate(all_sites):
-        if i in m_idxs:
-            if site.label in binary_dict.keys():
-                bin_evac = binary_dict[site.label]
-                sum_bin_evac += bin_evac
-                binary_evac_data.update({f'{i}_bin_evac':bin_evac})
-    avg_bin_evac = sum_bin_evac/3
-    binary_evac_data.update({'avg_bin_evac':avg_bin_evac})
-    bin_evac_ser = pd.Series(binary_evac_data)
-    return bin_evac_ser
-
-def get_std_pot(vasprun,m_idxs):
-    '''Gets standard reduction potential for LCE metals. Values are for M^x+ + x*e- -> M(s), from CRC handbook 97th ed.'''
-    #get data from vasprun
-    struc = vasprun.final_structure
-    all_sites = struc.sites
-    
-    redox_dict = {
-        'Al':-1.676,
-        'Mn':-1.185,
-        'Fe':-0.447,
-        'Co':-0.28,
-        'Ni':-0.257,
-        'Ga':-0.549,
-        }
-    std_redox_data = {}
-    sum_std_pot = 0
-    for i,site in enumerate(all_sites):
-        if i in m_idxs:
-            if site.label in redox_dict.keys():
-                std_pot = redox_dict[site.label]
-                sum_std_pot += std_pot
-                std_redox_data.update({f'{i}_std_pot':std_pot})
-    avg_std_pot = sum_std_pot/3
-    std_redox_data.update({'avg_std_pot':avg_std_pot})
-    std_redox_ser = pd.Series(std_redox_data)
-    return std_redox_ser
-    
-def pdos_weights(vasprun,m_idxs):
-    '''Gets average intensity of occupied PDOS regions for LCE metals.'''
-    #get data from vasprun
-    struc = vasprun.final_structure
-    all_sites = struc.sites
+def get_site_desc(base_dir,pdos_dir,vasprun,idxs):
+    '''get site descriptors'''
+    struc = vasprun.structures[-1]
+    sites = struc.sites
     dos = vasprun.complete_dos
-    
-    #set up dicts
-    pdos_weights = {}
-    
-    #get weights
-    for i, site in enumerate(all_sites):
-        if i in m_idxs:
-            #select orbital
-            if site.label == 'Al':
-                orb = OrbitalType(1)
-                lower = -8
-            else:
-                orb = OrbitalType(2)
-                lower = -6
-            
-            #get site dos
-            site_dos = dos.get_site_spd_dos(site=site)
-            orb_dos = site_dos[orb]
-            energy = orb_dos.energies
-            densities = orb_dos.densities
-            up = densities[Spin(1)]
-            down = densities[Spin(-1)]
-            
-            #get bounds
-            for x in range(len(energy)):
-                if energy[x] >= lower:
-                    a = x
-                    break
-            
-            for x in range(len(energy)):
-                if energy[x] >0:
-                    b = x
-                    break
-            
-            #split arrays
-            uls = np.split(up,[a,b])
-            dls = np.split(down,[a,b])
-            #calculate sums & average intensity
-            u_sum = np.sum(uls[1])
-            d_sum = np.sum(dls[1])
-            tot_sum = u_sum + d_sum
-            n = len(uls[1])
-            avg = tot_sum/n
-            #update dict
-            pdos_weights.update({f'{i}_avg_intensity':avg})
-    
-    #avg LCE
-    lce_sum = 0
-    for i in m_idxs:
-        lce_sum += pdos_weights[f'{i}_avg_intensity']
-    lce_avg = lce_sum/(len(m_idxs))
-    pdos_weights.update({'LCE_avg_intensity':lce_avg})
-    
-    #create pd series
-    pdos_weights_ser = pd.Series(pdos_weights)
-    return pdos_weights_ser
+    site_data = {}
+    #check indices
+    new_idxs = chk_idxs(base_dir, pdos_dir, idxs)
+    if new_idxs == None:
+        return None
+    #get integrated pdos data
+    pdos_df = pd.read_csv(f'{pdos_dir}/integrated-pdos.csv')
+    #loop over sites
+    for i in new_idxs:
+        site = sites[i]
+        spec = site.label
+        ele = site.specie
+        #get pdos data
+        for row_idx,row in pdos_df.iterrows():
+            if row['Atom index'] == i:
+                e_tot = row['Val. e-']
+                ox = row['OS']
+                if 'Spin' in pdos_df.columns():
+                    spin = row['Spin']
+                    #add to dict
+                    site_data.update({f'{i}_species':spec,f'{i}_val_e':e_tot,f'{i}_OS':ox,f'{i}_spin':spin})
+                else:
+                    site_data.update({f'{i}_species':spec,f'{i}_val_e':e_tot,f'{i}_OS':ox})
+        #get bc & bw
+        site_bc = dos.get_band_center(band=OrbitalType(ele.valence[0]),sites=[site])
+        site_bw = dos.get_band_width(band=OrbitalType(ele.valence[0]),sites=[site])
+        #add to dict
+        site_data.update({f'{i}_band_center':site_bc,f'{i}_band_width':site_bw})
+    #convert to Series
+    site_ser = pd.Series(site_data)
+    return site_ser
 
-def get_wtd_desc(m_idxs,pdos_weights,elec_data,bc_ser):
-    '''Gets various weighted descriptors.'''
-    wtd_desc ={}
-    #get electron weighted descriptors
-    sum_bc_o = 0
-    sum_bw_o = 0
-    tot_e = 0
-    for i in m_idxs:
-        elec = elec_data[f'{i}_elec']
-        tot_e += elec
-        sum_bc_o += (bc_ser[f'{i}_bc_occ']* elec)
-        sum_bw_o += (bc_ser[f'{i}_occ_bw']* elec)
-    wtd_desc.update({'elec_wtd_bc_occ':(sum_bc_o/tot_e),'elec_wtd_bw_occ':(sum_bw_o/tot_e)})
-    
-    #get intensity weighted descriptors
-    sum_bc = 0
-    sum_bw = 0
-    sum_ints = 0
-    for i in m_idxs:
-        wt = pdos_weights[f'{i}_avg_intensity']
-        sum_ints += wt
-        sum_bc += (bc_ser[f'{i}_bc_occ']* wt)
-        sum_bw += (bc_ser[f'{i}_occ_bw']* wt)
-    wtd_desc.update({'int_wtd_bc_occ':(sum_bc/sum_ints),'int_wtd_bw_occ':(sum_bw/sum_ints)})
-    
-    wtd_ser = pd.Series(wtd_desc)
-    return wtd_ser
-
-def get_vs(opt_dir,m_idxs,o_idx,elec_data,bl_ser):
-    '''Gets Vm, Vo, Vm-o, Eoxm, and wtd Vm & Vo'''
-    outcar = Outcar(f'{opt_dir}/OUTCAR')
-    charges = outcar.charge
-    v_data = {}
-    tot_e = 0
-    #get o chg
-    o_dict = charges[o_idx]
-    o_chg = o_dict['tot']
-    #set up v
-    vm = 0
-    vm_sum = 0
-    vo = 0
-    vo_sum = 0
-    vmo = 0
-    eoxm = 0
-    #get charges for metals
-    for i in m_idxs:
-        i_dict = charges[i]
-        chg = i_dict['tot']
-        elec = elec_data[f'{i}_elec']
-        tot_e += elec
-        bl = bl_ser.at[f'O_M{i}']
-        vm += (chg/bl)
-        vm_sum += ((chg/bl)*elec)
-        vo += (o_chg/bl)
-        vo_sum += ((o_chg/bl)*elec)
-        vmo += ((chg-o_chg)/bl)
-        eoxm += ((o_chg*chg)/bl)
-    v_data.update({'Vm':vm,'Vo':vo,'Vm-o':vmo,'Eoxm':eoxm,'wtd_Vm':(vm_sum/tot_e),'wtd_Vo':(vo_sum/tot_e)})
-    v_ser = pd.Series(v_data)
-    return v_ser
-
-def extract_desc(base_dir,ask=True):
+def extract_desc(base_dir):
     '''Extract descriptors.'''
     #get directories
-    pdos_dirs,base = get_dirs(base_dir,ask)
+    pdos_dirs,base = get_dirs(base_dir)
     
     if not pdos_dirs:
         print('No PDOS directories found. Exiting...')
         return
     
-    #get modifications from ModsCo.txt
-    if os.path.exists(os.path.join(base_dir,'Mods.txt')):
-        mods = read_file(base_dir, 'Mods.txt')
+    #ask if they would like to extract site descriptors
+    print('Would you like to extract descriptors for specific sites?')
+    print('If yes, input comma-separated list of atom indices. Indices should come from the pristine structure.')
+    print('If no, input either "no" or leave input prompt blank.')
+    idx_choice = input('Enter indices:')
+    
+    if len(idx_choice) == 0:
+        site_desc = False
+    elif idx_choice.lower().startswith('n'):
+        site_desc = False
+    else:
+        idls = idx_choice.strip().split(',')
+        idxs = [int(x) for x in idls]
+        site_desc = True
+    
+    #get modifications from Mods file
+    #check for mod file name in settings
+    settings = read_settings()
+    mod_file = settings['mods-file']
+    if os.path.exists(os.path.join(base_dir,mod_file)):
+        mods = read_file(base_dir, mod_file)
         #convert the commas to dashes so the csv won't separate incorrectly
         mods_str = []
         for m in mods:
@@ -602,22 +245,13 @@ def extract_desc(base_dir,ask=True):
         for i, mod in enumerate(mods,1):
             if f'Modification_{i}/' in pdos_dir:
                 opt_dir = os.path.dirname(pdos_dir)
-                #get atoms and indices from CONTCAR
-                atoms, o_idx, m_idxs, lix = get_atoms(os.path.join(opt_dir,'CONTCAR'))
-                #get integrated pdos data 
-                pdos_data, elec_data = get_pdos_data(pdos_dir, m_idxs)
-                #get electronegativty data
-                eln = get_eln(atoms,m_idxs)
-                #get bond lengths
-                bl_ser = bond_lengths(atoms, o_idx, m_idxs)
-                #get Vm, Vo, Vm-o, & Eoxm
-                v_ser = get_vs(opt_dir,m_idxs,o_idx,elec_data,bl_ser)
-                #get vasprun for form energy, band gap, band center and t2g/eg dos
-                #use optimization for form_en & band gap, pdos for band center & t2g/eg
+                #get vaspruns
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
                     opt_vpr = Vasprun(os.path.join(opt_dir,'vasprun.xml'))
                     pdos_vpr = Vasprun(os.path.join(pdos_dir,'vasprun.xml'))
+                    
+                #----Material level descriptors-----#
                 #get formation energy
                 form_en = get_form_en(opt_vpr)
                 #get band gap & fermi energy
@@ -627,31 +261,29 @@ def extract_desc(base_dir,ask=True):
                     dos = pdos_vpr.complete_dos
                     fermi = dos.efermi
                     cbm,vbm = dos.get_cbm_vbm()
-                #get band centers
-                bc_ser, avg_bc = get_band_center(pdos_vpr, m_idxs,o_idx,cbm)
-                #get t2g/eg dos
-                t2g_eg = t2g_eg_dos(pdos_vpr, m_idxs)
-                #get ionization e and polarizability
-                ion_pol_ser = get_ion_e_pol(opt_vpr, m_idxs)
-                #get evac from binary oxides
-                bin_evac_ser = get_binary_evac(opt_vpr, m_idxs)
-                #get std reduction potential
-                std_pot_ser = get_std_pot(opt_vpr, m_idxs)
-                #get avg intensities
-                pdos_weights_ser = pdos_weights(pdos_vpr, m_idxs)
-                #get weighted descriptors
-                wtd_ser = get_wtd_desc(m_idxs, pdos_weights_ser, elec_data, bc_ser)
+                #get nelect
+                nelect = Outcar(f'{pdos_dir}/OUTCAR').nelect
                 #create pandas series with modification and single value returns
-                e_ser = pd.Series(data={'Modification':mod,'E_form':form_en,'E_fermi':fermi,'E_bg':bg_e,'VBM':vbm,'CBM':cbm,'Lix':lix})
-                #concatenate all series
-                mod_ser = pd.concat([e_ser,pdos_data,bl_ser,v_ser,eln,bc_ser,t2g_eg,ion_pol_ser,bin_evac_ser,avg_bc,std_pot_ser,pdos_weights_ser,wtd_ser])
-                #append series to list
+                e_ser = pd.Series(data={'Modification':mod,'E_form':form_en,'E_fermi':fermi,'E_bg':bg_e,'VBM':vbm,'CBM':cbm,'nelect':nelect})
+               
+                #----Element level descriptors-----#
+                #get species descriptors
+                spec_ser = get_species_desc(pdos_vpr)
+                
+                #----Site level descriptors----#
+                if site_desc == True:
+                    site_ser = get_site_desc(base_dir, pdos_dir, pdos_vpr, idxs)
+                    if type(site_ser) != None:
+                        mod_ser = pd.concat([e_ser,spec_ser,site_ser])
+                    else:
+                        mod_ser = pd.concat([e_ser,spec_ser])
+                else:
+                    mod_ser = pd.concat([e_ser,spec_ser])
                 mod_data_list.append(mod_ser)
     
     #create data frame from mod_data_list
     mod_data = pd.DataFrame(data=mod_data_list)
     #reindex dataframe to use modification
-    mod_data = mod_data.set_index('Modification')
     
     if "_Removed" in base:
         prefix = 'vac'
@@ -662,6 +294,6 @@ def extract_desc(base_dir,ask=True):
     else:
         prefix = 'all'
     #print data to csv
-    mod_data.to_csv(os.path.join(base_dir,f'{prefix}-descriptors.csv'))
+    mod_data.to_csv(os.path.join(base_dir,f'{prefix}-descriptors.csv'),index=False)
     print('Descriptors extracted and descriptors.csv created.')
     

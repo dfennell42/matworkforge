@@ -8,12 +8,11 @@ from . import version
 
 from .structures.bulk_to_sc import create_structure
 from .structures.modifystructure import modify_structure
-from .structures.gen_random_mods import generate_mods_file
-from .structures.modify_heo import modify_without_sym
 from .structures.remove_pairs import process_vasp_inputs
 from .structures.remove_atoms import process_vasp_inputs_nosym
 from .structures.add_pairs import process_vasp_dirs
 from .structures.add_atoms import process_vasp_dirs_nosym
+from .structures.list_sites import get_pairs
 
 from .inputs.MagMom_recursive import process_poscar_files
 from .inputs.POTCAR_cat import process_directories
@@ -41,7 +40,7 @@ from .descriptors.get_descriptors import extract_desc
 
 from .charges.chg_diff import get_chgdiff
 
-from .utils.settings import read_settings
+from .utils.settings import read_settings,update_settings
 from .utils.prepare import prepare_dir
 from .utils.wf_update import check_vrsn
 from .utils.initialize import init_settings
@@ -76,29 +75,28 @@ def generate(
     create_structure(bulk,sc_size,miller,vacuum)
 
 @app.command(short_help='[cyan]Modify[/] structure.',rich_help_panel='Structure Gen & Modification')
-def modify():
-    '''[cyan]Modify[/] structure based on user input. Needs Mods.txt '''
-    modify_structure(os.getcwd())
-    process_poscar_files(mod=None,ignore_sym=False)
+def modify(
+        ignore_sym: Annotated[bool,typer.Option('--ignore-sym','-i',help='Modify structures, ignoring symmetry.')] = False
+        ):
+    '''[cyan]Modify[/] structure based on user input. '''
+    settings = read_settings()
+    if ignore_sym == True and settings['ignore-symmetry'] == False:
+        update_settings({'ignore-symmetry':True,'incar-params':{'ISYM':-1}})
+        settings = read_settings()
+    modify_structure(os.getcwd(),settings,ignore_sym)
+    process_poscar_files(settings,mod=None)
     process_directories(os.getenv('POT_PATH'), vac = False, add=False)
-    generate_vasp_inputs_in_dir(os.getcwd())
-    update_incar_files_with_magmom(os.getcwd(),comment_ldau=True,ignore_sym=False)
-
-@app.command(short_help='Generate [cyan]HEO[/] structures.',rich_help_panel='Structure Gen & Modification')
-def heo():
-    '''Generate random modifications for [cyan]HEO[/] structures based on user input, ignoring symmetry.'''
-    generate_mods_file()
-    modify_without_sym(os.getcwd())
-    process_poscar_files(mod=None, ignore_sym=True)
-    process_directories(os.getenv('POT_PATH'), vac = False, add=False)
-    generate_vasp_inputs_in_dir(os.getcwd())
-    update_incar_files_with_magmom(os.getcwd(),comment_ldau=True,ignore_sym=True)
+    generate_vasp_inputs_in_dir(os.getcwd(),settings)
+    update_incar_files_with_magmom(os.getcwd(),settings)
 
 @app.command(rich_help_panel='Structure Gen & Modification')
 def vacancy(
         ignore_sym: Annotated[bool,typer.Option('--ignore-sym','-i',help='Create vacancies, ignoring symmetry.')] = False
         ):
     '''Create [red1]vacancies[/].'''
+    settings = read_settings()
+    if settings['ignore-symmetry'] == True:
+        ignore_sym = True
     if ignore_sym == True:
         element_name = process_vasp_inputs_nosym(os.getcwd())
     elif ignore_sym == False:
@@ -111,6 +109,9 @@ def adsorbate(
         ignore_sym: Annotated[bool,typer.Option('--ignore-sym','-i',help='Add adsorbate, ignoring symmetry.')] = False
         ):
     '''[green]Add[/] adsorbates to structures.'''
+    settings = read_settings()
+    if settings['ignore-symmetry'] == True:
+        ignore_sym = True
     if ignore_sym == True:
         element_name = process_vasp_dirs_nosym(os.getcwd())
     elif ignore_sym == False:
@@ -118,6 +119,12 @@ def adsorbate(
     process_pairs_mod_dirs(os.getcwd(), element_name, 'Added',ignore_sym=ignore_sym)
     process_directories(os.getenv('POT_PATH'), vac=False, add=True)
 
+@app.command(rich_help_panel='Structure Gen & Modification')
+def sites():
+    '''Generates lists of [cyan]site pairs[/].'''
+    settings = read_settings()
+    get_pairs(settings)
+    
 ##------Job Handling------##
 
 @app.command(short_help='[purple]Verify[/] input files.',rich_help_panel='Job Handling & Submission')

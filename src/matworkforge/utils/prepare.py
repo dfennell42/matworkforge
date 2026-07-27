@@ -19,7 +19,7 @@ def prepare_dir():
     userdir = os.path.expanduser('~/wf-user-files')
     
     #copy settings file
-    set_file = os.path.join(f'{userdir}/example_files','base_settings.toml')
+    set_file = os.path.join(userdir,'base_settings.toml')
     dest_file = os.path.join(base_dir,'settings.toml')
     if os.path.exists(set_file):
         shutil.copy2(set_file, dest_file)

@@ -6,9 +6,11 @@ Author: Dorothea Fennell
 Changelog:
     6-24-26: File created, comments added
     6-25-26: Command finished.
+    7-21-26: Updated to pull submission script name from settings
 """
 #import 
 import os
+import toml
 import shutil
 import subprocess as sp
 from rich import print
@@ -63,21 +65,23 @@ def submit_calcs(calc_type,force=False,skip_preflight=False):
         print('No calculations to submit. Exiting...')
         return
     
+    #check settings for submission script name
+    if os.path.exists(f'{base_dir}/settings.toml'):
+        settings = toml.load(f'{base_dir}/settings.toml')
+        script_name = settings['submit-file']
+    else:
+        script_name = 'vasp.sh'
     #copy vasp.sh to base_dir
     filedir = os.path.expanduser('~/wf-user-files')
-    fullpath = os.path.join(filedir, 'vasp.sh')
+    fullpath = os.path.join(filedir, script_name)
     shutil.copy(fullpath, base_dir)
     
     for d in chk_passed:
-        sh_path = os.path.join(base_dir,'vasp.sh')
-        if os.path.exists(f'{d}/vasp.sh'):
-            pass
-        else:
-            shutil.copy(sh_path,d)
-        
+        sh_path = os.path.join(base_dir,script_name)
+        shutil.copy(sh_path,d)
         print(f'Submitting calculation in {d}...')
         os.chdir(d)
-        sp.run(['sbatch','vasp.sh'], check=True)
+        sp.run(['sbatch',f'{script_name}'], check=True)
         os.chdir(base_dir)
     
     print('All jobs submitted.')

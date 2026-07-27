@@ -1,5 +1,4 @@
 #Custom INCAR parameters for PDOS calculations
-[pdos-params]
 ALGO = "Normal"
 EDIFF = 1e-06
 ENCUT = 520.0

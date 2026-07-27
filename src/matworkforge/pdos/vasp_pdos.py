@@ -5,97 +5,76 @@ Modified from Blake's vasp_pdos.py script
 Changelog: 
     4-30-25: Created, comments added. Broke original script up into functions so it can be applied recursively. 
     8-6-25: Modified fermi_energy to split accordingly
+    7-22-26: Rewrote to accomodate for non-spin polarized calculations, and to use Dataframes instead
 '''
 #import modules
-import numpy as np
 import os
+from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.electronic_structure.core import Orbital,OrbitalType
+import pandas as pd
 
 #define functions
-def fermi_energy(pdos_dir):
-    '''
-    Determining fermi energy from given OUTCAR file. 
-    Note: TotalDos and Atom files with individual orbitals are not fermi shifted but atom_total files are
-    '''
-    line=""
-    for l in open(f'{pdos_dir}/OUTCAR',"r").readlines():
-        if "Fermi energy:" in l:
-            line=l
-    if line.startswith(' BZINTS'):
-        fermi = float(line.split()[3].strip(';'))
-    else:
-        fermi=float(line.split()[2])
-    return fermi
 
-def read_files(pdos_dir):
-    ''' Reads POSCAR and DOSCAR and returns linesP and linesD'''
-    D = open(f"{pdos_dir}/DOSCAR", "r")
-    P = open(f"{pdos_dir}/POSCAR", "r")
-    linesP = P.readlines()
-    linesD = D.readlines()
-    P.close()
-    D.close()
-    return linesP, linesD
-
-def tdos(pdos_dir,linesD):
+def tdos(pdos_dir,vpr):
     '''
-    Constructs the Total Density of States and saves it to TotalDos.dat. File has 5 columns: Energy(eV), DOS(up), DOS(down), Integrated DOS(up), and Integrated DOS(down).
+    Constructs the Total Density of States and saves it to TotalDos.dat.
     '''
-    TDos = open(f"{pdos_dir}/TotalDos.dat", "a")
-    x = linesD[5]          
-    x = x.split()                              
-    loop = int(x[2])                   
-    s = ""         
-    s = s.join(linesD[6:6+loop])
-    TDos.write('#Energy(eV)  DOS(up)       DOS(down)      Int_DOS(up)    Int_DOS(down)')
-    TDos.write('\n')
-    TDos.write(s)
-    TDos.close()
+    tdos = vpr.tdos
+    idos = vpr.idos
+    en = tdos.energies
+    #make dataframes
+    energies = pd.DataFrame({'energies':en})
+    tdf = pd.DataFrame(data=tdos.densities)
+    idf = pd.DataFrame(data=idos.densities)
+    for k in tdf.keys():
+        tdf.rename(columns={k:f'DOS({k.name})'},inplace=True)
+    for l in idf.keys():
+        idf.rename(columns={l:f'integrated DOS({l.name})'},inplace=True)
+    tdos_df = pd.concat([energies,tdf,idf],axis=1)
+    tdos_df.to_csv(f'{pdos_dir}/TotalDos.dat',sep=' ',index=False)
 
-def pdos(pdos_dir,linesP,linesD,fermi):
-   '''Creates .dat and _total.dat files for each atom. _total.dat files have the orbitals summed (all p orbitals together, etc.), and the energy is fermi shifted.'''
-   #List of Atom types and the most of each atom type
-   atom_types = linesP[5]
-   atom_types = atom_types.split()
-   atom_numbers = linesP[6]
-   atom_numbers = atom_numbers.split()
-   atom_numbers = [int(i) for i in atom_numbers]
-   tot_atoms = [int(i) for i in atom_numbers]
-   tot_atoms = sum(tot_atoms)
-   l = linesD[5]
-   l = l.split()
-   loop = int(l[2])
-
-   #Loop through and create the different PDOS for each atom
-   a=1
-   b=2
-   count=0
- 
-   for x in atom_numbers:
-       for i in range(x):
-           index1 = 6 + a + a*loop
-           index2 = 6 + a + b*loop
-           Pdos = open(f'{pdos_dir}/{atom_types[count]}{a-1}.dat', "a")
-           collect = ""
-           collect = collect.join(linesD[index1:index2])
-           Pdos.write('#Energy(eV)  s(up) s(down)   p{y}(up)  p{y}(down)   p{z}(up) p{z}(down)   p{x}(up) p{x}(down)   d{xy}(up)   d{xy}(down)     d{yz}(up)   d{yz}(down)    d{z2}(up)  d{z2}(down)    d{xz}(up)  d{xz}(down)     d{x2-y2}(up)    d{x2-y2}(down)')
-           Pdos.write('\n')
-           Pdos.write(collect)
-           Pdos.close()
-           
-           #load file to create summed pdos file
-           data = np.loadtxt(f'{pdos_dir}/{atom_types[count]}{a-1}.dat',unpack=True)
-           dfermi = data[0]-fermi
-           dup = data[9] + data[11] + data[13] + data[15] + data[17] 
-           ddown = (data[10] + data[12] + data[14] + data[16] + data[18])*-1 
-           pup = data[3] + data[5] + data[7]  
-           pdown = (data[4] + data[6] + data[8])*-1 
-           sup = data[1] 
-           sdown = data[2]*-1 
-           added = [dfermi, sup, sdown, pup, pdown, dup,  ddown] 
-           np.savetxt(f'{pdos_dir}/{atom_types[count]}{a-1}_total.dat', added, header="Energy(eV)              s(up)                    s(down)                  p(up)                    p(down)                  d(up)                    d(down)")
-           a+=1
-           b+=1
-       count+=1
+def pdos(pdos_dir,vpr):
+    '''Creates .dat and _total.dat files for each atom. _total.dat files have the orbitals summed (all p orbitals together, etc.), and the energy is fermi shifted.'''
+    #complete dos
+    dos = vpr.complete_dos
+    energies = pd.DataFrame(data={'energies':dos.energies})
+    #list sites to get file names
+    sites = dos.structure.sites
+    # .dat file first
+    pd_list = vpr.pdos
+    for idx,p in enumerate(pd_list):
+        p = dict(p)
+        df_list = [energies]
+        #loop over orbitals
+        for i in range(len(p)):
+            df = pd.DataFrame(data=p[Orbital(i)])
+            for label in df.keys():
+                df.rename(columns={label:f'{Orbital(i).name}({label.name})'},inplace=True)
+            df_list.append(df)
+        #concat
+        pdos_df = pd.concat(df_list,axis=1)
+        #determine filename
+        site = sites[idx]
+        filename = f'{site.label}{idx}'
+        #write file
+        pdos_df.to_csv(f'{pdos_dir}/{filename}.dat',sep=' ',index=False)
+        
+        #write _total.dat file
+        site_dos = dos.get_site_spd_dos(site)
+        #get fermi-shifted energy
+        fermi = vpr.efermi
+        en_shift = energies.sub(fermi)
+        dos_list = [en_shift]
+        for l in range(len(site_dos)):
+            data = site_dos[OrbitalType(l)].densities
+            df = pd.DataFrame(data=data)
+            for label in df.keys():
+                df.rename(columns={label:f'{OrbitalType(l).name}({label.name})'},inplace=True)
+            dos_list.append(df)
+        #concat
+        pdos_tot = pd.concat(dos_list,axis=1)
+        #write file
+        pdos_tot.to_csv(f'{pdos_dir}/{filename}_total.dat',sep=' ',index=False)
         
 
 def process_pdos_dirs(base_dir):
@@ -113,16 +92,13 @@ def process_pdos_dirs(base_dir):
     
     for pdos_dir in pdos_dirs:
         print(f'Processing {pdos_dir}')
-        #open DOSCAR & POSCAR
-        linesP, linesD = read_files(pdos_dir)
+        #get vasprun
+        vpr = Vasprun(f'{pdos_dir}/vasprun.xml')
 
         #construct tdos
-        tdos(pdos_dir,linesD)
-
-        #get fermi energy
-        fermi = fermi_energy(pdos_dir)
+        tdos(pdos_dir,vpr)
 
         #construct pdos for each atom
-        pdos(pdos_dir, linesP, linesD, fermi)
+        pdos(pdos_dir, vpr)
         print(f'PDOS files created for {pdos_dir}')
         
