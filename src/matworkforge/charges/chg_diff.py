@@ -14,7 +14,6 @@ import numpy as np
 from pymatgen.io.vasp.outputs import Chgcar, VolumetricData
 from ase.io import read
 from ase.data.colors import jmol_colors
-from ase.data import covalent_radii
 import pyvista as pv
 
 def calc_chgdiff(base_dir,pris_file, vac_files):
@@ -38,15 +37,15 @@ def calc_chgdiff(base_dir,pris_file, vac_files):
                 vac_chg = Chgcar.from_file(f'{vac}')
                 vacs.append(vac_chg)
             except:
-                print('Cannot read vacancy CHGCAR. Skipping...')
+                print('Cannot read vacancy/adsorption CHGCAR. Skipping...')
                 continue
         else:
-            print('Cannot find vacancy CHGCAR. Skipping...')
+            print('Cannot find vacancy/adsorption CHGCAR. Skipping...')
             continue
     
     #check list isn't empty
     if not vacs:
-        print('Vacancy CHGCAR(s) not found or cannot be read. Exiting...')
+        print('Vacancy/adsorption CHGCAR(s) not found or cannot be read. Exiting...')
         sys.exit()
     
     #Subtract data
@@ -59,7 +58,7 @@ def calc_chgdiff(base_dir,pris_file, vac_files):
             sys.exit()
     
     #write data to cube file
-    struc = pris_chg.poscar
+    struc = vac_chg.poscar
     vol_data = VolumetricData(structure=struc.structure, data={'total':diff_data})
     vol_data.to_cube(f'{base_dir}/CHGDIFF.cube')    
     print('CHGDIFF.cube file created.')
@@ -79,7 +78,7 @@ def plot_chgdiff(base_dir):
     #plot atoms
     for i,center in enumerate(pos):
         atm_num = atomic_numbers[i]
-        sph = pv.Sphere(radius=(covalent_radii[atm_num]*0.75),center=center) #set atoms to 0.75x normal radius so chg data is easier to read
+        sph = pv.Sphere(radius=0.6,center=center) #set atoms to 0.75x normal radius so chg data is easier to read
         pl.add_mesh(sph,color=jmol_colors[atm_num],smooth_shading=True,name=f'{atomic_symbols[i]}_{i}')
     
     #read chg data & define contours
@@ -120,8 +119,8 @@ def get_chgdiff(no_show_img=False):
     print('\nPlease input the path of the pristine CHGCAR file.')
     pris_file = input('Pristine CHGCAR:')
     check_input(pris_file)
-    print('\nPlease input the path to the vacancy CHGCAR file(s). If there are multiple files, please input the paths as a comma-separated list.')
-    vacs = input('Vacancy CHGCAR(s):')
+    print('\nPlease input the path to the vacancy or adsorption CHGCAR file(s). If there are multiple files, please input the paths as a comma-separated list.')
+    vacs = input('Vacancy/Adsorption CHGCAR(s):')
     check_input(vacs)
     vac_files = vacs.split(',')
     #calc chgdiff

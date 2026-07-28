@@ -23,6 +23,7 @@ def read_settings():
                'submit-file':'vasp.sh',
                'ignore-symmetry':False,
                'kpoints':{'style':'gamma','kpoint-grid':[2,2,2],'shift':[0,0,0]},
+               'pdos-kpoints':{'style':'gamma','kpoint-grid':[2,2,2],'shift':[0,0,0]},
                'incar-params':{},
                'pdos-params':{}
                }

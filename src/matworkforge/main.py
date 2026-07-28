@@ -42,7 +42,6 @@ from .charges.chg_diff import get_chgdiff
 
 from .utils.settings import read_settings,update_settings
 from .utils.prepare import prepare_dir
-from .utils.wf_update import check_vrsn
 from .utils.initialize import init_settings
 
 #load variables
@@ -169,9 +168,10 @@ def status():
 @app.command(short_help='Get [yellow3]energies[/].',rich_help_panel='Energies & Charges')
 def gete():
     '''Get [yellow3]energies[/] and generate E_pristine, E_vac, and E_ads CSV files.'''
-    get_all_e(os.getcwd())
-    process_e_vac(os.getcwd())
-    process_e_ads(os.getcwd())
+    settings = read_settings()
+    get_all_e(os.getcwd(),settings)
+    process_e_vac(os.getcwd(),settings)
+    process_e_ads(os.getcwd(),settings)
 
 @app.command(short_help='Generate and plot [yellow3]charge difference[/].',rich_help_panel='Energies & Charges')
 def chgdiff(
@@ -188,7 +188,8 @@ def chgdiff(
 @app.command(rich_help_panel='PDOS')
 def pdos():
     '''Set up [deep_pink3]PDOS[/] calculations.'''
-    pdos_vasp_inputs(os.getcwd())
+    settings = read_settings()
+    pdos_vasp_inputs(os.getcwd(),settings)
     process_pdos_dirs(os.getcwd())
     
 @app.command(rich_help_panel='PDOS')
@@ -231,19 +232,7 @@ def init():
 @app.command(rich_help_panel='Utils')
 def prep():
     '''
-    [dodger_blue1]Prepare[/] directory for set of calculations. [bold red1] IN PROGRESS [/]
+    [dodger_blue1]Prepare[/] directory for set of calculations.
     '''
     prepare_dir()
-
-@app.command(rich_help_panel='Utils')
-def update(
-        editable:Annotated[bool,typer.Option("--editable",'-e',help='Install the workflow as an editable package.')] = False,
-):
-    '''[dodger_blue1]Update[/] the workflow.'''
-    if editable == True:
-        suffix = '.tar.gz'
-    elif editable == False:
-        suffix = '.whl'
-    check_vrsn(suffix)
-    
 

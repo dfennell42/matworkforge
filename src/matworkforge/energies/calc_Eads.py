@@ -5,6 +5,7 @@ Calculate Adsorbtion energy.
 Author: Dorothea Fennell
 Changelog: 
     3-3-26: Created, comments added. 
+    7-28-26: Modified to pull mods file name from settings.toml
 """
 #import modules
 import os
@@ -154,7 +155,7 @@ def get_all_e(mod_dir,mods,base_dir,ignore_sym=False):
     
     return ads_tot
 
-def process_e_ads(base_dir):
+def process_e_ads(base_dir,settings):
     '''Gets e_ads recursively for all dirs and returns it in one csv '''
     mod_dirs = []
     for root, dirs, files in os.walk(base_dir):
@@ -165,22 +166,7 @@ def process_e_ads(base_dir):
         print('No modification directories found.')
         return
     
-    #check ISYM
-    with open(f'{mod_dirs[0]}/VASP_inputs/INCAR','r') as f:
-        lines = f.readlines()
-    
-    for l in lines:
-        if l.strip().startswith('ISYM'):
-            ignore_sym = True
-    #set ignore_sym = False if it doesn't exist
-    if 'ignore_sym' not in locals():
-        ignore_sym = False
-    
-    #mods file name
-    if ignore_sym == True:
-        mod_file = 'ModsIdx.txt'
-    else:
-        mod_file = 'Mods.txt'
+    mod_file = settings['mods-file']
     #get modifications from ModsCo.txt
     mods = read_file(base_dir, mod_file)
     #convert the commas to dashes so the csv won't separate incorrectly

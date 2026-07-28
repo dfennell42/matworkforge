@@ -8,17 +8,19 @@ Changelog:
     6-2025: Modified to generalize script.
     6-25-25: Modified to pull PDOS_INCAR.txt from user directory
     3-2-26: Added check_contcar and ability to set up PDOS for adsorption struc.
+    7-28-26: Modified to write kpoints file from settings.toml rather than just copying the file from the optimization.
 """
 #import modules
 import os
 import shutil
+from pymatgen.io.vasp import Kpoints
 from matworkforge.job_handling.check_contcar import check_contcar
 #define functions
 def copy_vasp_files(source_dir, dest_dir):
     """Copies essential VASP input files from source to destination."""
     os.makedirs(dest_dir, exist_ok=True)  # Ensure the target directory exists
     # List of files to copy
-    FILES_TO_COPY = ["INCAR", "KPOINTS", "POTCAR", "CONTCAR"]
+    FILES_TO_COPY = ["INCAR", "POTCAR", "CONTCAR"]
     for file in FILES_TO_COPY:
         src_file = os.path.join(source_dir, file)
         dest_file = os.path.join(dest_dir, file)
@@ -28,7 +30,7 @@ def copy_vasp_files(source_dir, dest_dir):
         else:
             print(f"Warning: {file} not found in {source_dir}, skipping.")
         
-def create_pdos(input_dir,base_directory):
+def create_pdos(input_dir,pdos_kps):
     '''Creates PDOS directory and copies files to new directory. '''         
     print(f"\nProcessing: {input_dir}")
     
@@ -39,12 +41,20 @@ def create_pdos(input_dir,base_directory):
     # Copy required VASP files
     copy_vasp_files(input_dir, output_dir)
     
+    #create kpoints file
+    if pdos_kps['style'].lower() == 'gamma':
+        kpt_file = Kpoints.gamma_automatic(pdos_kps['kpoint-grid'],pdos_kps['shift'])
+    elif pdos_kps['style'].lower() == 'monkhorst' or pdos_kps['style'].lower() == 'monkhorst-pack':
+        kpt_file = Kpoints.monkhorst_automatic(pdos_kps['kpoint-grid'],pdos_kps['shift'])
+    #write kpoints file
+    kpt_file.write_file(os.path.join(input_dir, "KPOINTS"))
+    
     #Rename CONTCAR to POSCAR
     if os.path.exists(f'{input_dir}/PDOS/CONTCAR'):
         check_contcar(input_dir)
         os.rename(f'{input_dir}/PDOS/CONTCAR',f'{input_dir}/PDOS/POSCAR')
             
-def process_vasp_inputs(base_directory):
+def process_vasp_inputs(base_directory,settings):
     """Processes all VASP_inputs directories recursively, applying the same modifications to each."""
     input_dirs = []
     #ask user if they would like to remove pairs from one structure or do separate structures
@@ -68,8 +78,9 @@ def process_vasp_inputs(base_directory):
     if not input_dirs:
         print("No input directories found. Have you run the initial calculations?")
         return
-
+    
+    pdos_kps = settings['pdos-kpoints']
     # Apply the same modifications to all VASP_inputs directories
     for input_dir in input_dirs:
-        create_pdos(input_dir, base_directory)
+        create_pdos(input_dir,pdos_kps)
 

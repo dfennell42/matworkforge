@@ -9,7 +9,7 @@ def find_magmom_file(modification_dir):
     return None
 
 # Function to update the INCAR file: delete the existing MAGMOM line and add the new one
-def update_incar_with_magmom(incar_path, magmom_file,ignore_sym = False):
+def update_incar_with_magmom(incar_path, magmom_file):
     with open(incar_path, "r") as incar:
         incar_lines = incar.readlines()
 
@@ -19,10 +19,6 @@ def update_incar_with_magmom(incar_path, magmom_file,ignore_sym = False):
 
     # Remove any existing MAGMOM line
     updated_lines = [line for line in incar_lines if not line.strip().startswith("MAGMOM")]
-    
-    #If necessary, add ISYM = -1
-    if ignore_sym == True:
-        updated_lines.append('ISYM = -1\n')
         
     # Add the new MAGMOM line at the end of the file
     updated_lines.append(f"{magmom_line}\n")
@@ -34,9 +30,8 @@ def update_incar_with_magmom(incar_path, magmom_file,ignore_sym = False):
     print(f"Updated MAGMOM in: {incar_path}")
 
 # Function to recursively find INCAR files in VASP_inputs and update them
-def update_incar_files_with_magmom(root_dir,settings):
+def update_incar_files_with_magmom(root_dir):
     # Walk through subdirectories in the ROOT directory
-    ignore_sym = settings['ignore-symmetry']
     for subdir, dirs, files in os.walk(root_dir):
         # Check if the subdirectory is a "Modification_#" directory
         if "Modification_" in subdir:
@@ -48,7 +43,7 @@ def update_incar_files_with_magmom(root_dir,settings):
                         incar_path = os.path.join(vasp_inputs_dir, file)
                         magmom_file = find_magmom_file(subdir)  # Find the _MAGMOM.txt in the current Modification_# directory
                         if magmom_file:
-                            update_incar_with_magmom(incar_path, magmom_file, ignore_sym)
+                            update_incar_with_magmom(incar_path, magmom_file)
                         else:
                             print(f"No _MAGMOM.txt file found in {subdir}")
 

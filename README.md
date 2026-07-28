@@ -1,14 +1,13 @@
 # Materials WorkForge CLI
 #### Author: Dorothea Fennell (dfennell1@bnl.gov, dfennell37@gmail.com)
-**Version**: 0.15.0
+**Version**: 1.0.0
 
 ---
 ### Important Note:
-This package is in the process of being generalized & made ready for v1.0. As such, the documentation is currently out of date. Commands may be changed, removed, or added. 
-
+As the project has recently converted to v1.0, the documentation found in the [Workflow Guide](Workflow_Guide.md) is currently out of date. Updated documentation is in process and will be available soon!
 ---
 
-A command line interface tool designed to simplify running VASP calculations for LCO. This workflow can:
+Materials WorkForge (matworkforge) is a command-line interface (CLI) tool designed to simplify calculation set-up, submission, and post-processing for compositionally-tuned crystalline surfaces. Among its capabilities are:
 - Create surface structures
 - Modify composition
 - Create vacancies
@@ -18,34 +17,23 @@ A command line interface tool designed to simplify running VASP calculations for
 - Parse, integrate and plot PDOS
 - Check calculations for errors, timeouts, and cancellations, fixes minor errors, and resubmits calculations
 - Extract descriptors for machine learning
-- Collect all relaxed structure files in one directory.
 
-## Installing the Workflow:
-The workflow can be installed in multiple ways, depending on your needs. If you want to use the workflow as-is, you can install it like any other package. This can be done by using the GitHub link and pip or by downloading the WHL file and installing it manually. 
+## Installing the Package:
+Matworkforge can be installed in multiple ways, depending on your needs. If you want to use the package as-is, you can install it like any other package. This can be done by using the GitHub link and pip or by downloading the WHL file and installing it manually. 
 
-For the LCO workflow, ***the following editable installation is recommended.*** This is due to the fact that the workflow was written to work on a specific computing cluster, and as such, some paths are hardcoded, which means they will not work if the package is installed as-is. If using the generalized Delafossite workflow, either installation is fine. 
-
-| Note: It is *highly recommended* to install and use the workflow in a separate environment to minimize potential dependency conflicts.|
+#### Note about Pymatgen:
+For whatever reason, the latest versions of pymatgen have not been uploaded to PyPi, and as such, pip will be unable to install the required version for matworkforge. If you are using conda to manage your environment, you can install the correct version (>=2026.0.0) with conda. For other installation methods, refer to Pymatgen's documentation.
+| Note: It is *highly recommended* to install and use the package in a separate environment to minimize potential dependency conflicts.|
 |:---|
 
 **Editable Installation:**  
-To create an editable installation, you will first need to install Poetry, which the workflow uses as a package builder and dependency manager. The Poetry docs are linked here for reference: [Poetry Docs](https://python-poetry.org/docs/). After installing Poetry, run `poetry self update`. This is the best way to make sure Poetry is up to date before setting up the installation. 
+To create an editable installation, you will first need to install Poetry, which we use as a package builder and dependency manager. The Poetry docs are linked here for reference: [Poetry Docs](https://python-poetry.org/docs/). After installing Poetry, run `poetry self update`. This is the best way to make sure Poetry is up to date before setting up the installation. 
 
-You can then install the workflow by either cloning the GitHub repository or by downloading the tar.gz file and un-tarring it in your home directory. Cloning the repository is probably the easiest way to get any updates made, but I (as of writing this) have not tried that method. It should work, but if you want to be one hundred percent certain it will work, I would recommend using the tar file. 
+You can then install the package by either cloning the GitHub repository or by downloading the tar.gz file and un-tarring it in your home directory. Cloning the repository is probably the easiest way to get any updates made, but I (as of writing this) have not tried that method. It should work, but if you want to be one hundred percent certain it will work, I would recommend using the tar file. 
 
-After installing the workflow, go into the package's head directory, which contains the *pyproject.toml* and *poetry.lock* files. Then run `poetry install` to install the workflow as a package and all necessary dependencies. If Poetry returns an error, run `poetry self update` and then try again. 
+After installing, go into the package's head directory, which contains the *pyproject.toml* and *poetry.lock* files. Then run `poetry install` to install the package and all necessary dependencies. If Poetry returns an error, run `poetry self update` and then try again. 
 
-### Updating the Workflow
-***Note:*** This command requires the installation of GitHub's CLI package `gh` and due to the way it's packaged, Poetry cannot add it as a dependency (believe me, I tried). The package and installation instructions are available here: [GitHub CLI](https://github.com/cli/cli). 
-
-To update the workflow to the latest version, use command `wf update`. This command will download the latest version of the workflow from GitHub and install it. The workflow uses pip to install the new version, so if pip is not installed on your system, it will simply download the wheel file to your home directory. 
-
-If you prefer to install the workflow as an editable package, use option `--editable` or `-e` to download the tar file instead. 
-
-## Using the Workflow:  
-### See the workflow guide here: [Workflow Guide](Workflow_Guide.md)
-
-## Workflow Commands (`wf`):
+## Matworkforge Commands (`wf`):
 
 **Usage**:
 
@@ -62,53 +50,37 @@ $ wf [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `init`: Initializes workflow settings.
-* `generate`: Generates surface structure based on bulk structure and user input.
-* `modify`: Modifies LCO structure based on user input.
-* `heo`: Generates random modifications for HEO...
-* `removepairs`: Removes Li/O pairs from structures.
-* `removeatoms`: Removes single Li or O atoms, ignoring...
-* `addpairs`: Adds pairs of atoms to structures.
-* `addatoms`: Adds single atoms to structures.
-* `gete`: Generates E_pristine, E_vac, and E_ads CSV...
-* `pdos`: Sets up PDOS calculations.
-* `parse`: Parses PDOS data into individual files and...
-* `integrate`: Integrates already parsed PDOS files.
-* `plot`: Plots PDOS based on user input.
-* `chgdiff`: Generates CHGDIFF.cube file and plots charge difference.
-* `extract`: Gets ML descriptors from PDOS and...
-* `submit`: Submits VASP calculations.
-* `check`: Checks vasp.out for errors and fixes and...
-* `collect`: Collects all CONTCAR files in Structures...
-* `update`: Checks workflow version and updates if...
-* `extall`: Runs descriptor extraction for all...
+* `generate`: <span style="color: #008080; text-decoration-color: #008080">Generate</span> surface structure from bulk.
+* `modify`: <span style="color: #008080; text-decoration-color: #008080">Modify</span> structure.
+* `vacancy`: Create <span style="color: #ff0000; text-decoration-color: #ff0000">vacancies</span>.
+* `adsorbate`: <span style="color: #008000; text-decoration-color: #008000">Add</span> adsorbates to structures.
+* `sites`: Generates lists of <span style="color: #008080; text-decoration-color: #008080">site pairs</span>.
+* `preflight`: <span style="color: #af00ff; text-decoration-color: #af00ff">Verify</span> input files.
+* `submit`: <span style="color: #af00ff; text-decoration-color: #af00ff">Submit</span> VASP calculations.
+* `check`: <span style="color: #af00ff; text-decoration-color: #af00ff">Check</span> calculations for errors.
+* `status`: Print <span style="color: #af00ff; text-decoration-color: #af00ff">status</span> of all calculations.
+* `gete`: Get <span style="color: #d7d700; text-decoration-color: #d7d700">energies</span>.
+* `chgdiff`: Generate and plot <span style="color: #d7d700; text-decoration-color: #d7d700">charge difference</span>.
+* `pdos`: Set up <span style="color: #d70087; text-decoration-color: #d70087">PDOS</span> calculations.
+* `parse`: <span style="color: #d70087; text-decoration-color: #d70087">Parse</span> PDOS data into...
+* `integrate`: <span style="color: #d70087; text-decoration-color: #d70087">Integrate</span> already parsed PDOS files.
+* `plot`: <span style="color: #d70087; text-decoration-color: #d70087">Plot</span> PDOS.
+* `extract`: <span style="color: #ff8700; text-decoration-color: #ff8700">Extract</span> descriptors.
+* `init`: <span style="color: #0087ff; text-decoration-color: #0087ff">Initialize</span> workflow...
+* `prep`: <span style="color: #0087ff; text-decoration-color: #0087ff">Prepare</span> directory for set...
 
-## `init`
+## `wf generate`
 
-Initializes workflow settings.
-
-**Usage**:
-
-```console
-$ init [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `generate`
-
-Generates surface structure based on bulk structure and user input. Bulk structure can be given as a file or as a Materials Project ID. Workflow will also prompt for supercell size and Miller index.
+<span style="color: #008080; text-decoration-color: #008080">Generate</span> surface structure based on bulk structure and user input. Bulk structure can be given as a file or as a Materials Project ID. Workflow will also prompt for supercell size and Miller index.
     
 If command line options are provided, workflow will bypass input sections for the provided information. 
     
-Note: If using Materials Project, an API key MUST be provided.
+<span style="font-weight: bold">Note:</span> If using Materials Project, an API key <span style="font-weight: bold">MUST</span> be provided.
 
 **Usage**:
 
 ```console
-$ generate [OPTIONS]
+$ wf generate [OPTIONS]
 ```
 
 **Options**:
@@ -119,200 +91,87 @@ $ generate [OPTIONS]
 * `-v, --vacuum INTEGER`: Thickness of vacuum layer, in angstrom (Å). Default is 10 Å.
 * `--help`: Show this message and exit.
 
-## `modify`
+## `wf modify`
 
-Modifies LCO structure based on user input. Needs ModsCo.txt
+<span style="color: #008080; text-decoration-color: #008080">Modify</span> structure based on user input.
 
 **Usage**:
 
 ```console
-$ modify [OPTIONS]
+$ wf modify [OPTIONS]
+```
+
+**Options**:
+
+* `-i, --ignore-sym`: Modify structures, ignoring symmetry.
+* `--help`: Show this message and exit.
+
+## `wf vacancy`
+
+Create <span style="color: #ff0000; text-decoration-color: #ff0000">vacancies</span>.
+
+**Usage**:
+
+```console
+$ wf vacancy [OPTIONS]
+```
+
+**Options**:
+
+* `-i, --ignore-sym`: Create vacancies, ignoring symmetry.
+* `--help`: Show this message and exit.
+
+## `wf adsorbate`
+
+<span style="color: #008000; text-decoration-color: #008000">Add</span> adsorbates to structures.
+
+**Usage**:
+
+```console
+$ wf adsorbate [OPTIONS]
+```
+
+**Options**:
+
+* `-i, --ignore-sym`: Add adsorbate, ignoring symmetry.
+* `--help`: Show this message and exit.
+
+## `wf sites`
+
+Generates lists of <span style="color: #008080; text-decoration-color: #008080">site pairs</span>.
+
+**Usage**:
+
+```console
+$ wf sites [OPTIONS]
 ```
 
 **Options**:
 
 * `--help`: Show this message and exit.
 
-## `heo`
+## `wf preflight`
 
-Generates random modifications for HEO structures based on user input, ignoring symmetry.
+Runs pre-calculation checks to <span style="color: #af00ff; text-decoration-color: #af00ff">verify</span> VASP input files.
 
 **Usage**:
 
 ```console
-$ heo [OPTIONS]
+$ wf preflight [OPTIONS]
 ```
 
 **Options**:
 
 * `--help`: Show this message and exit.
 
-## `removepairs`
+## `wf submit`
 
-Removes Li/O pairs from structures.
-
-**Usage**:
-
-```console
-$ removepairs [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `removeatoms`
-
-Removes single Li or O atoms, ignoring symmetry.
+<span style="color: #af00ff; text-decoration-color: #af00ff">Submit</span> VASP calculations.
 
 **Usage**:
 
 ```console
-$ removeatoms [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `addpairs`
-
-Adds pairs of atoms to structures.
-
-**Usage**:
-
-```console
-$ addpairs [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `addatoms`
-
-Adds single atoms to structures.
-
-**Usage**:
-
-```console
-$ addatoms [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `gete`
-
-Generates E_pristine, E_vac, and E_ads CSV files.
-
-**Usage**:
-
-```console
-$ gete [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `pdos`
-
-Sets up PDOS calculations.
-
-**Usage**:
-
-```console
-$ pdos [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `parse`
-
-Parses PDOS data into individual files and integrates.
-
-**Usage**:
-
-```console
-$ parse [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `integrate`
-
-Integrates the PDOS files. 
-    
-Note: Files MUST be parsed before integration. The parse command parses AND integrates, so this command should only be used if integration needs to be performed on already parsed files.
-
-**Usage**:
-
-```console
-$ integrate [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `plot`
-
-Plots PDOS based on user input.
-
-**Usage**:
-
-```console
-$ plot [OPTIONS]
-```
-
-**Options**:
-
-* `-n, --no-show-image`: Do not display plot in X11 window after running command.
-* `--help`: Show this message and exit.
-
-## `chgdiff`
-
-Generates CHGDIFF.cube file from pristine and vacancy CHGCAR files and visualizes the charge difference. 
-Note: CHGCAR files MUST have the same size real space grids.
-
-**Usage**:
-
-```console
-$ chgdiff [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `extract`
-
-Gets ML descriptors from PDOS and optimization calculations.
-
-**Usage**:
-
-```console
-$ extract [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `submit`
-
-Submits VASP calculations.
-
-**Usage**:
-
-```console
-$ submit [OPTIONS] [CALC]
+$ wf submit [OPTIONS] [CALC]
 ```
 
 **Arguments**:
@@ -324,16 +183,17 @@ $ submit [OPTIONS] [CALC]
 * `-v, --vac`: Run only vacancy calculations. Does not work with calc = pdos
 * `-a, --add`: Run only adsorption calculations. Does not work with calc = pdos
 * `-f, --force`: Submits ALL calculations, including those that have been run before.
+* `-s, --skip-preflight`: Skip input file verification.
 * `--help`: Show this message and exit.
 
-## `check`
+## `wf check`
 
-Checks vasp.out for errors and fixes and resubmits calculations if possible.
+<span style="color: #af00ff; text-decoration-color: #af00ff">Checks</span> calculations for errors and fixes and resubmits calculations if possible.
 
 **Usage**:
 
 ```console
-$ check [OPTIONS]
+$ wf check [OPTIONS]
 ```
 
 **Options**:
@@ -341,46 +201,144 @@ $ check [OPTIONS]
 * `-n, --no-submit`: Use -n or --no-submit to run check without autosubmitting calculations
 * `--help`: Show this message and exit.
 
-## `collect`
+## `wf status`
 
-Collects all CONTCAR files in Structures directory.
+Print <span style="color: #af00ff; text-decoration-color: #af00ff">status</span> of all calculations in directory tree, including error codes.
 
 **Usage**:
 
 ```console
-$ collect [OPTIONS]
+$ wf status [OPTIONS]
 ```
 
 **Options**:
 
-* `-f, --force`: Forces file copying, replacing existing files.
-* `-p, --parent TEXT`: Force set the name of the parent structure
-* `-g, --group TEXT`: Force set the name of the group of calculations
 * `--help`: Show this message and exit.
 
-## `update`
+## `wf gete`
 
-Checks workflow version and updates if necessary.
+Get <span style="color: #d7d700; text-decoration-color: #d7d700">energies</span> and generate E_pristine, E_vac, and E_ads CSV files.
 
 **Usage**:
 
 ```console
-$ update [OPTIONS]
+$ wf gete [OPTIONS]
 ```
 
 **Options**:
 
-* `-e, --editable`: Install the workflow as an editable package.
 * `--help`: Show this message and exit.
 
-## `extall`
+## `wf chgdiff`
 
-Runs descriptor extraction for all directories.
+Generates CHGDIFF.cube file from pristine and vacancy CHGCAR files and visualize the <span style="color: #d7d700; text-decoration-color: #d7d700">charge difference</span>. 
+<span style="font-weight: bold">Note:</span> CHGCAR files <span style="font-weight: bold">MUST</span> have the same size real space grids.
 
 **Usage**:
 
 ```console
-$ extall [OPTIONS]
+$ wf chgdiff [OPTIONS]
+```
+
+**Options**:
+
+* `-n, --no-show-image`: Do not display plot in X11 window after running command.
+* `--help`: Show this message and exit.
+
+## `wf pdos`
+
+Set up <span style="color: #d70087; text-decoration-color: #d70087">PDOS</span> calculations.
+
+**Usage**:
+
+```console
+$ wf pdos [OPTIONS]
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `wf parse`
+
+<span style="color: #d70087; text-decoration-color: #d70087">Parse</span> PDOS data into individual files and integrates.
+
+**Usage**:
+
+```console
+$ wf parse [OPTIONS]
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `wf integrate`
+
+<span style="color: #d70087; text-decoration-color: #d70087">Integrate</span> the PDOS files. 
+<span style="font-weight: bold">Note:</span> Files <span style="font-weight: bold">MUST</span> be parsed before integration. The parse command parses AND integrates, so this command should only be used if integration needs to be performed on already parsed files.
+
+**Usage**:
+
+```console
+$ wf integrate [OPTIONS]
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `wf plot`
+
+<span style="color: #d70087; text-decoration-color: #d70087">Plot</span> PDOS.
+
+**Usage**:
+
+```console
+$ wf plot [OPTIONS]
+```
+
+**Options**:
+
+* `-n, --no-show-image`: Do not display plot in X11 window after running command.
+* `--help`: Show this message and exit.
+
+## `wf extract`
+
+<span style="color: #ff8700; text-decoration-color: #ff8700">Extract</span> ML descriptors from PDOS and optimization calculations.
+
+**Usage**:
+
+```console
+$ wf extract [OPTIONS]
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `wf init`
+
+<span style="color: #0087ff; text-decoration-color: #0087ff">Initialize</span> workflow settings.
+
+**Usage**:
+
+```console
+$ wf init [OPTIONS]
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `wf prep`
+
+<span style="color: #0087ff; text-decoration-color: #0087ff">Prepare</span> directory for set of calculations.
+
+**Usage**:
+
+```console
+$ wf prep [OPTIONS]
 ```
 
 **Options**:

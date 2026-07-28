@@ -56,6 +56,10 @@ def generate_vasp_inputs_in_dir(root_dir,settings):
     kpoints = settings['kpoints']
     if len(set_params) > 0:
         custom_incar_params.update(set_params)
+    #check if ignore sym = true
+    ignore_sym = settings['ignore-symmetry']
+    if ignore_sym == True:
+        custom_incar_params.update({'ISYM':-1})
     # Walk through all subdirectories of the root directory
     for subdir, dirs, files in os.walk(root_dir):
         for file in files:

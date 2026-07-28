@@ -5,9 +5,11 @@ Changelog:
     9-10-25: New version of integrate_pdos, using scipy.integrate.simpson instead of Blake's method.
     9-11-25: Updated integration bounds for d-block metals to -6 to 0, added section to integrate both s & p orbitals for p-block elements.
     7-22-26: Updated to generalize for v1.0, allow for non spin polarized calculations and use pandas.
+    7-28-26: Modified to pull integration bounds from file in wf-user-files.
 """
 #import modules
 import os
+import toml
 import numpy as np
 import pandas as pd
 from pymatgen.core.periodic_table import Element
@@ -39,7 +41,7 @@ def chk_spin(pdos_dir):
     elif ispin == 2:
         return True
     
-def int_pdos(data,up_idx,lower,block,spin,down_idx=None):
+def int_pdos(data,up_idx,lower,upper,block,spin,down_idx=None):
     """Integrates PDOS in specified windows."""
     #slice arrays
     energy = data[:,0]
@@ -52,7 +54,7 @@ def int_pdos(data,up_idx,lower,block,spin,down_idx=None):
             break
     #get top of integration window
     for x in range(len(energy)):
-        if energy[x] > 0:
+        if energy[x] > upper:
             b = x
             break
     
@@ -101,8 +103,15 @@ def get_os(ele,e_tot):
     oxs = valence - e_tot
     return oxs
 
-def int_d_states(filelist,spin):
-    """Integrates the d states of the metal atoms for the total number of electrons and d/p hybridization. """
+def get_bounds():
+    '''Gets integration bounds from .toml file'''
+    userdir = os.path.expanduser('~/wf-user-files')
+    filepath = os.path.join(userdir,'integration_bounds.toml')
+    int_bounds = toml.load(filepath)   
+    return int_bounds
+
+def int_val_states(filelist,int_bounds,spin):
+    """Integrates the valence orbitals of atoms. """
     #create data lists
     datalist = []
     for file in filelist:
@@ -120,28 +129,24 @@ def int_d_states(filelist,spin):
             pass
         else:
             if ele.block =='s':
-                e_lower = -20
                 if spin == True:
                     up_idx = 1
                     down_idx = 2
                 elif spin == False:
                     up_idx = 1
             elif ele.block == 'p':
-                e_lower = -10
                 if spin == True:
                     up_idx = 3
                     down_idx = 4
                 elif spin == False:
                     up_idx = 2
             elif ele.block == 'd':
-                e_lower = -6
                 if spin == True:
                     up_idx = 5
                     down_idx = 6
                 elif spin == False:
                     up_idx = 3
             elif ele.block == 'f':
-                e_lower = -15
                 if spin == True:
                     up_idx = 7
                     down_idx = 8
@@ -152,8 +157,11 @@ def int_d_states(filelist,spin):
                 down_idx = None
             data = np.genfromtxt(file,skip_header=1)
             
+            #define bounds
+            e_lower = int_bounds[f'{ele.block}-orbital']['lower']
+            e_upper = int_bounds[f'{ele.block}-orbital']['upper']
             #integrate from lower bound to 0 to get total # of electrons and net spin
-            e_data = int_pdos(data,up_idx,e_lower,ele.block,spin,down_idx)
+            e_data = int_pdos(data,up_idx,e_lower,e_upper,ele.block,spin,down_idx)
             
             #get os
             ox = get_os(ele,e_data[0])
@@ -172,7 +180,10 @@ def integrate_all_pdos(base_dir):
     '''Integrates pdos recursively through directories.'''
     #get pdos directories
     pdos_dirs = get_dirs(base_dir)
-
+    
+    #get integration bounds
+    int_bounds = get_bounds()
+    
     if not pdos_dirs:
         print('No PDOS directories found. Exiting...')
         return
@@ -183,7 +194,7 @@ def integrate_all_pdos(base_dir):
         #check spin
         spin = chk_spin(pdos_dir)
         #integrate
-        df = int_d_states(filelist,spin)
+        df = int_val_states(filelist,int_bounds,spin)
         #write df to csv
         df.to_csv(f'{pdos_dir}/integrated-pdos.csv',index=False)
 

@@ -19,28 +19,26 @@ def modify_incar(incar_path, root, ignore_sym):
     """Edits the MAGMOM line in INCAR based on the modification type."""
     with open(incar_path, "r") as f:
         lines = f.readlines()
-
-    magmom_file = find_magmom_file(root)  # Find the _MAGMOM.txt in the current Modification_# directory
-    if not magmom_file:
-        print(f"No _MAGMOM.txt file found in {root}")
-        return
-    
-    with open(magmom_file, "r") as magmom:
-        magmom_line = magmom.read().strip()
     
     #check for ISYM
     if ignore_sym == True:
-        isym = [line for line in lines if 'ISYM' in line]
-        if not isym:
+        if not any('ISYM' in line for line in lines):
             lines.append('ISYM = -1\n')
     
-    modified_lines = []
-    for line in lines:
-        if line.strip().startswith("MAGMOM"):
-            modified_lines.append(magmom_line)
-        else:
-            modified_lines.append(line)
-
+    magmom_file = find_magmom_file(root)  # Find the _MAGMOM.txt in the current Modification_# directory
+    if magmom_file:
+        with open(magmom_file, "r") as magmom:
+            magmom_line = magmom.read().strip()
+        
+        modified_lines = []
+        for line in lines:
+            if line.strip().startswith("MAGMOM"):
+                modified_lines.append(magmom_line)
+            else:
+                modified_lines.append(line)
+    else:
+        print(f"No _MAGMOM.txt file found in {root}")
+    
     with open(incar_path, "w") as f:
         f.writelines(modified_lines)
 

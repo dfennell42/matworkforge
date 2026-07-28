@@ -17,7 +17,7 @@ def copy_files(source_dir, dest_dir):
     """Copies files from source to destination."""
     os.makedirs(dest_dir, exist_ok=True)  # Ensure the target directory exists
     # List of files to copy
-    FILES_TO_COPY = ["BulkE_dict.txt", "MagMom_dict.txt", "pdos_incar_params.toml","custom_incar_params.toml", "base_settings.toml"]
+    FILES_TO_COPY = ["BulkE_dict.txt", "MagMom_dict.txt", "pdos_incar_params.toml","custom_incar_params.toml", "base_settings.toml","integration_bounds.toml"]
     for file in FILES_TO_COPY:
         src_file = os.path.join(source_dir, file)
         dest_file = os.path.join(dest_dir, file)
@@ -49,5 +49,6 @@ def init_settings():
     dotenv.set_key(os.path.join(pkgdir,'.env'),'POT_PATH',pot_path)
     #print info
     print('\nAll base files (POSCAR, SpinPairs.txt, vasp.sh, etc.) should be added to directory "~/wf-user-files".\nAny edits to these files should be done in that directory.')
+    print('\nExample files can be found in ~/wf-user-files/example_files')
     #make dir
     make_wf_dir(f'{pkgdir}/text_files')

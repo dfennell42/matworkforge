@@ -5,6 +5,7 @@ Changelog:
     5-14-25: Created, comments added.
     7-9-25: Modified to sort by modification directory number, with sorting dir number by int rather than string to avoid 10 coming before 2. 
     3-2-26: Modified to check ISYM
+    7-28-26: Modified to pull Mods file name from settings.toml
 """
 #import modules
 import os
@@ -36,7 +37,7 @@ def sort_by_dir(data):
     num = int(dir_num)
     return num
 
-def get_all_e(base_dir):
+def get_all_e(base_dir,settings):
     '''Gets total energy of pristine surfaces.Returns file of pristine energies.'''
     #Checks for existing E_pristine.csv 
     if 'E_pristine.csv' in os.listdir(base_dir):
@@ -50,23 +51,8 @@ def get_all_e(base_dir):
     if not mod_dirs:
         print('No modification directories found.')
         return
-    
-    #check ISYM
-    with open(f'{mod_dirs[0]}/VASP_inputs/INCAR','r') as f:
-        lines = f.readlines()
-    
-    for l in lines:
-        if l.strip().startswith('ISYM'):
-            ignore_sym = True
-    #set ignore_sym = False if it doesn't exist
-    if 'ignore_sym' not in locals():
-        ignore_sym = False
-    
-    #mods file name
-    if ignore_sym == True:
-        mod_file = 'ModsIdx.txt'
-    else:
-        mod_file = 'Mods.txt'
+    #check settings
+    mod_file = settings['mods-file']
     #get modifications from ModsCo.txt
     mods = read_file(base_dir, mod_file)
     #convert the commas to dashes so the csv won't separate incorrectly

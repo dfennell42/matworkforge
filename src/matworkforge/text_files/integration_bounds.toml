@@ -1,0 +1,16 @@
+#All integration windows are in eV
+[s-orbital]
+upper = 0
+lower = -20
+
+[p-orbital]
+upper = 0
+lower = -10
+
+[d-orbital]
+upper = 0
+lower = -8
+
+[f-orbital]
+upper = 0
+lower = -15

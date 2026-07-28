@@ -9,6 +9,7 @@ Changelog:
     4-30-25: Added section so script functions recursively.
     8-6-25: Added gaussian smearing to the plotting. Fixed a couple other minor issues.
     9-10-25: Removed gaussian smearing now that gaussian method is used to compute PDOS.
+    7-28-26: Updated for v1.0
 """
 #import modules
 import numpy as np
@@ -86,27 +87,33 @@ def save_plot(fig, filename, base_dir,w=500, h=600, s=1.25, no_show_image=False)
     elif no_show_image == True:
         print(f'{filename} saved.')
 
+def get_orbs(file):
+    '''Get list of orbitals'''
+    with open(file,'r') as f:
+        lines = f.readlines()
+    header = lines[0].strip()
+    orbs = header.split(' ')
+    orbs = [o for o in orbs if not o == 'energies']
+    return orbs
+
 def option1(f,fig,plot_choice, r=1, c =1):
     #this one needs to be unpacked because it's saved by numpy.savetxt rather than .write()
-    data = np.genfromtxt(f, skip_header=1, unpack = True)
+    data = np.genfromtxt(f, skip_header=1)
     #generate name for plot & file
     filename = str(f).split('/')
     name=str(filename[-1]).split('.')
     name=str(name[0]).split("_")
     #data
     energy = data[:,0]
-    orbs = ['s up','s down','p up','p down','d up', 'd down']
+    orbs = get_orbs(f)
     for i, orb in enumerate(orbs,1):
         if not(i==1 or i==2):
-            fig.add_scatter(x=data[:,i], y=energy, mode='lines',fill='tozerox', name = f'{orb}',row = r, col = c)
-        
-        if (str(name[0]).startswith("O") or str(name[0]).startswith('Al')):
-            fig.update_traces(visible='legendonly',selector=dict(name='d up'), row = r,col=c)
-            fig.update_traces(visible='legendonly',selector=dict(name='d down'),row = r,col=c)
-        else:
-            fig.update_traces(visible='legendonly',selector=dict(name='p up'),row = r,col=c)
-            fig.update_traces(visible='legendonly',selector=dict(name='p down'),row = r,col=c)
-                
+            if i%2 == 0:
+                #multiply the down values by -1 to show pdos by spin
+                x = data[:,i]*-1
+                fig.add_scatter(x=x, y=energy, mode='lines',fill='tozerox', name = f'{orb}',row = r, col = c)
+            else:
+                fig.add_scatter(x=data[:,i], y=energy, mode='lines',fill='tozerox', name = f'{orb}',row = r, col = c)
     #add plot title
     if plot_choice == '1':
         plot_title = f'PDOS of {name[0]}'
@@ -124,7 +131,7 @@ def option2(f,fig,fermi,plot_choice,r=1,c=1):
     name=str(name[0]).split("_")
     #data
     energy = data[:,0]-fermi
-    orbs =['s up','s down','p(y) up', 'p(y) down','p(z) up', 'p(z) down', 'p(x) up','p(x) down', 'd(xy) up', 'd(xy) down', 'd(yz) up', 'd(yz) down','d(z2) up', 'd(z2) down', 'd(xz) up', 'd(xz) down', 'd(x2-y2) up','d(x2-y2) down']
+    orbs = get_orbs(f)
     for i, orb in enumerate(orbs,1):
         if not(i==1 or i==2):
             if i%2 == 0:
@@ -161,6 +168,7 @@ def plot_pdos(base_dir, no_show_img):
     print("1: All")
     print("2: Pristine")
     print("3: Vacancy")
+    print("4: Adsorption")
     struc = input('Enter the number of your choice: ')
     check_input(struc)
     pdos_dirs = []
@@ -176,6 +184,9 @@ def plot_pdos(base_dir, no_show_img):
                     pdos_dirs.append(root)
             elif struc =='3':
                 if root.endswith('_Removed/PDOS'):
+                    pdos_dirs.append(root)
+            elif struc=='4':
+                if root.endswith('_Added/PDOS'):
                     pdos_dirs.append(root)
     else:
         dir_num = rec.split(',')

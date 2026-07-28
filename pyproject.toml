@@ -1,6 +1,6 @@
 [project]
 name = "matworkforge"
-version = "0.15.2"
+version = "1.0.0"
 description = "A CLI tool for generating & modifying structures for VASP calculations."
 authors = [
     {name = "Dorothea Fennell",email = "dfennell1@bnl.gov"}
