@@ -7,7 +7,7 @@
 As the project has recently converted to v1.0, the documentation found in the [Workflow Guide](Workflow_Guide.md) is currently out of date. Updated documentation is in process and will be available soon!
 
 ---
-[![DOI](https://zenodo.org/badge/998980916.svg)](https://doi.org/10.5281/zenodo.21678725)
+[![DOI](zenodo.21678726.svg)](https://doi.org/10.5281/zenodo.21678725)
 
 Materials WorkForge (matworkforge) is a command-line interface (CLI) tool designed to simplify calculation set-up, submission, and post-processing for compositionally-tuned crystalline surfaces. Among its capabilities are:
 - Create surface structures
