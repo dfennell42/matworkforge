@@ -1,5 +1,4 @@
 #Custom INCAR parameters for structural optimization
-[incar-params]
 ENCUT = 520
 ISIF = 3
 ISMEAR = 0

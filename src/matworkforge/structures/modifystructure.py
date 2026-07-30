@@ -60,13 +60,8 @@ def modify_structure(base_dir,settings,ignore_sym):
     #modify
     for i,element in enumerate(elements,1):
         if float(choice) == i:
-            try: 
-                pairs = read_pairs(base_dir, element)
-            except FileNotFoundError:
-                get_pairs()
-                pairs = read_pairs(base_dir, element)
-            finally:
-                modify_pairs(atoms, pairs,mods_file,ignore_sym)
+            pairs = read_pairs(base_dir, element,settings)
+            modify_pairs(atoms, pairs,mods_file,ignore_sym)
             
 #if __name__ == "__main__":
    # base_dir = os.getcwd()

@@ -5,6 +5,7 @@ Command list-sites
 Author: Dorothea Fennell
 Changelog:
     7-27-26: File created, comments added
+    7-30-26: Updated to put try loop in read_pairs
 """
 #import
 import os
@@ -56,11 +57,16 @@ def get_pairs(settings):
         save_pairs_to_file(pairs[f'{element}'], f'{element}.txt')
         print(f"Pairs saved to {element}.txt.")
 
-def read_pairs(base_dir,element):
+def read_pairs(base_dir,element,settings):
     '''Read in pairs for wf modify.'''
-    with open(os.path.join(base_dir,f'{element}_pairs.txt'),'r') as f:
-        lines = f.readlines()
-    
+    try:
+        with open(os.path.join(base_dir,f'{element}_pairs.txt'),'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        get_pairs(settings)
+        with open(os.path.join(base_dir,f'{element}_pairs.txt'),'r') as f:
+            lines = f.readlines()
+   
     #drop comment line
     lines = [l for l in lines if not l.startswith('#')]
     #get pairs

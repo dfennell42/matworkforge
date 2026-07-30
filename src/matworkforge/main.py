@@ -86,7 +86,7 @@ def modify(
     process_poscar_files(settings,mod=None)
     process_directories(os.getenv('POT_PATH'), vac = False, add=False)
     generate_vasp_inputs_in_dir(os.getcwd(),settings)
-    update_incar_files_with_magmom(os.getcwd(),settings)
+    update_incar_files_with_magmom(os.getcwd())
 
 @app.command(rich_help_panel='Structure Gen & Modification')
 def vacancy(
