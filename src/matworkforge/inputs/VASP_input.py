@@ -20,8 +20,8 @@ def generate_vasp_inputs(vasp_file, custom_incar_params,kpoints):
         kpt_file = Kpoints.monkhorst_automatic(kpoints['kpoint-grid'],kpoints['shift'])  # could specify a different kgrid
 
     # Apply custom INCAR parameters if provided
-   # if custom_incar_params:
-        #incar.update(custom_incar_params)
+    if custom_incar_params:
+        incar.update(custom_incar_params)
 
     # Define output directory
     input_dir = os.path.join(os.path.dirname(vasp_file), "VASP_inputs")
