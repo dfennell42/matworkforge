@@ -44,11 +44,11 @@ def modify_incar(incar_path, root, ignore_sym):
 
     print(f"Updated INCAR in {os.path.dirname(incar_path)}")
 
-def process_pairs_mod_dirs(base_directory,element_name,mod,ignore_sym=False):
+def process_pairs_mod_dirs(base_directory,settings,element_name,mod,ignore_sym=False):
     """Finds all *_Pairs directories and edits their INCAR files."""
     for root, dirs, files in os.walk(base_directory):
         if "INCAR" in files:
             if os.path.basename(root).startswith(f'{element_name}_') and root.endswith(f'_{mod}'):
-                process_poscar_files(mod,ignore_sym)
+                process_poscar_files(settings,mod)
                 modify_incar(os.path.join(root, "INCAR"),root,ignore_sym)
     

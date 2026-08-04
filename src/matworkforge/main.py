@@ -100,7 +100,7 @@ def vacancy(
         element_name = process_vasp_inputs_nosym(os.getcwd())
     elif ignore_sym == False:
         element_name = process_vasp_inputs(os.getcwd())
-    process_pairs_mod_dirs(os.getcwd(), element_name, 'Removed',ignore_sym=ignore_sym)
+    process_pairs_mod_dirs(os.getcwd(),settings, element_name, 'Removed',ignore_sym=ignore_sym)
     process_directories(os.getenv('POT_PATH'), vac = True, add=False)
         
 @app.command(rich_help_panel='Structure Gen & Modification')

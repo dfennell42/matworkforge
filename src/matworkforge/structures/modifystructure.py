@@ -24,9 +24,9 @@ def modify_pairs(atoms,atom_pairs,mods_file,ignore_sym=False):
         if ignore_sym == False:
             for i, pair_index in enumerate(indices):
                 if pair_index < len(atom_pairs):
-                    index1, index2 = atom_pairs[pair_index]
-                    modified_atoms[index1].symbol = new_elements[i]
-                    modified_atoms[index2].symbol = new_elements[i]
+                    index1, index2 = atom_pairs[str(pair_index)]
+                    modified_atoms[int(index1)].symbol = new_elements[i]
+                    modified_atoms[int(index2)].symbol = new_elements[i]
         elif ignore_sym == True:
             for i, idx in enumerate(indices):
                 modified_atoms[idx].symbol = new_elements[i]
