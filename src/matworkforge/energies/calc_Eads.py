@@ -123,7 +123,7 @@ def get_all_e(mod_dir,mods,base_dir,ignore_sym=False):
     #stops the program in no adsorption directories are found
     if not ads_dirs:
         print('No adsorption directories found. Exiting...')
-        sys.exit()
+        return
     
     mod_name = os.path.basename(mod_dir)
     #get e_ads for ads dirs
@@ -188,8 +188,7 @@ def process_e_ads(base_dir,settings):
     
     #check for values
     if e_ads_tot == None:
-        print('No values found. Exiting...')
-        sys.exit()
+        return
     
     #sort data
     e_ads_tot.sort(key=sort_data)

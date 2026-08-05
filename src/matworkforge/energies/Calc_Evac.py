@@ -99,7 +99,7 @@ def get_all_e(mod_dir,mods,base_dir):
     #stops the program in no vacancy directories are found
     if not vac_dirs:
         print('No vacancy directories found. Exiting...')
-        sys.exit()
+        return
      
     mod_name = os.path.basename(mod_dir)
     #gets e_vac for vac dirs
@@ -193,8 +193,7 @@ def process_e_vac(base_dir,settings):
     
     #check e_vac_tot for values      
     if e_vac_tot == None:
-        print('No values found. Exiting...')
-        sys.exit()
+        return
     #sort data
     e_vac_tot.sort(key=sort_data)
     #write file

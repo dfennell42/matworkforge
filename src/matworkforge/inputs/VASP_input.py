@@ -22,6 +22,19 @@ def generate_vasp_inputs(vasp_file, custom_incar_params,kpoints):
     # Apply custom INCAR parameters if provided
     if custom_incar_params:
         incar.update(custom_incar_params)
+    
+    #Remove LDAU parameters if LDAU=False because MPRelax set auto includes them
+    if 'LDAU' in incar.keys():
+        if incar['LDAU'] == False:
+            new_incar = incar.copy()
+            for key in incar.keys():
+                if key.startswith('LDAU'):
+                    new_incar.pop(key)
+            #add ldau = false back in 
+            new_incar.update({'LDAU':False})
+            incar = new_incar
+    else:
+        pass
 
     # Define output directory
     input_dir = os.path.join(os.path.dirname(vasp_file), "VASP_inputs")

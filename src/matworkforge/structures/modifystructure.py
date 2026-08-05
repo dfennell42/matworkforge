@@ -2,7 +2,7 @@ from ase.io import read, write
 import os
 import copy
 import shutil
-from .list_sites import read_pairs, get_pairs
+from .list_sites import read_pairs
 
 # Replace Co according to ModsCo.txt
 def modify_pairs(atoms,atom_pairs,mods_file,ignore_sym=False):
@@ -49,7 +49,8 @@ def modify_structure(base_dir,settings,ignore_sym):
     atoms = read(os.path.join(base_dir,'POSCAR'))
     #print('atoms read')
     sym = atoms.symbols
-    elements = sym.species()
+    elements = list(sym.species())
+    elements.sort()
     #modify based on input
     print('Which element would you like to modify?')
     for i,element in enumerate(elements):
