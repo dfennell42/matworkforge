@@ -123,7 +123,7 @@ def find_files_recursive(pattern, mod):
 def get_incar_params():
     '''Gets custom incar parameters from wf-user-files directory'''
     userdir = os.path.expanduser('~/wf-user-files')
-    param_file = os.path.join(userdir,'custom_incar_params.toml')
+    param_file = os.path.join(userdir,'opt_incar_params.toml')
     custom_incar_params = toml.load(param_file)
     return custom_incar_params
 

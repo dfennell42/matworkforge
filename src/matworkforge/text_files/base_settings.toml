@@ -15,7 +15,7 @@ shift = [0,0,0]
 style = 'gamma'
 kpoint-grid = [2,2,2]
 shift = [0,0,0]
-#Add calculation specific incar parameters here. These values will override custom_incar_params.toml/pdos_incar_params.toml
+#Add calculation specific incar parameters here. These values will override opt_incar_params.toml/pdos_incar_params.toml
 #If these tables are empty, params will come from appropriate file in ~/wf-user-files
 [incar-params]
 

@@ -5,6 +5,7 @@ Add atoms to supercells.
 Author: Dorothea Fennell
 Changelog:
     1-30-26: Created, comments added. 
+    8-5-26: Updated to accommodate for slabs that are centered in the vacuum
 """
 #import modules
 from ase.io import read, write
@@ -63,11 +64,13 @@ def add_pairs(atoms, pairs, species, offset, selected_indices):
             #determine which atom is higher.
             pos = np.stack((a1.position,a2.position))
             z_max = pos[:,2].argmax()
+            #get thickness of slab
+            slab_z = np.abs(a2.z-a1.z)
             if a1.z == pos[z_max,2]:
                 a1_h = 2
-                a2_h = -a1.z - 2
+                a2_h = -slab_z - 2
             elif a2.z == pos[z_max,2]:
-                a1_h = -a2.z - 2
+                a1_h = -slab_z - 2
                 a2_h = 2
             #add atom to a1
             add_adsorbate(mod_atoms,species,a1_h,(a1.x,a1.y),offset=offtup)

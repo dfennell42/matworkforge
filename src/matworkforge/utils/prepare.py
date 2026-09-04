@@ -36,4 +36,4 @@ def prepare_dir():
     
     #print
     print("Directory ready for calculations. Use the settings.toml file to set file names and custom INCAR parameters if desired.")
-    print("If INCAR parameters aren't set in settings.toml, parameters will default to values in custom_incar_params.toml and pdos_incar_params.toml.")
+    print("If INCAR parameters aren't set in settings.toml, parameters will default to values in opt_incar_params.toml and pdos_incar_params.toml.")
