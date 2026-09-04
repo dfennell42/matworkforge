@@ -24,4 +24,4 @@ Materials WorkForge (matworkforge) is a command-line interface (CLI) tool design
 For installation instructions, see the *matworkforge* documentation, [available here](https://github.com/dfennell42/matworkforge/wiki/Installation) .
 
 ## Documentation:
-See the [GitHub wiki](https://github.com/dfennell42/matworkforge/wiki) for information on using *matworkforge*!
+See the [repository wiki](https://github.com/dfennell42/matworkforge/wiki) for information on using *matworkforge*!
