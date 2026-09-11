@@ -30,7 +30,7 @@ def read_settings():
     
     #get settings
     if os.path.exists(f'{base_dir}/settings.toml'):
-        settings = toml.load('settings.toml')
+        settings = toml.load(f'{base_dir}/settings.toml')
     
     #if settings file doesn't exist
     if 'settings' not in locals():

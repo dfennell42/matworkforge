@@ -1,4 +1,5 @@
 import os
+import sys
 import toml
 import shutil
 from pymatgen.io.vasp import Kpoints, Poscar, Incar
@@ -23,7 +24,7 @@ def generate_vasp_inputs(vasp_file, custom_incar_params,kpoints):
     if custom_incar_params:
         incar.update(custom_incar_params)
     
-    #Remove LDAU parameters if LDAU=False because MPRelax set auto includes them
+    #Update LDAU params if necessary
     if 'LDAU' in incar.keys():
         if incar['LDAU'] == False:
             new_incar = incar.copy()
@@ -33,6 +34,11 @@ def generate_vasp_inputs(vasp_file, custom_incar_params,kpoints):
             #add ldau = false back in 
             new_incar.update({'LDAU':False})
             incar = new_incar
+        elif incar['LDAU'] == True:
+            config = MPRelaxSet(structure).config_dict
+            #have to update LDAUU, LDAUJ, & LDAUL because the way pymatgen writes them
+            new_params = ldau_tags(poscar, config, custom_incar_params)
+            incar.update(new_params)
     else:
         pass
 
@@ -61,6 +67,55 @@ def get_incar_params():
     param_file = os.path.join(userdir,'opt_incar_params.toml')
     custom_incar_params = toml.load(param_file)
     return custom_incar_params
+
+def ldau_tags(poscar,config,custom_incar_params):
+    '''gets proper ldau tags for incar'''
+    #get incar config
+    incar_config = config['INCAR']
+    #set tags
+    tags = ['LDAUU','LDAUJ','LDAUL']
+    #symbols
+    sym = poscar.site_symbols
+    #loop over tags
+    new_params = {}
+    for tag in tags:
+        #get tag from incar params or config
+        if tag in custom_incar_params.keys():
+            t = custom_incar_params[tag]
+            if 'dict' in str(type(t)).lower():
+                t = dict(t)
+            else:
+                pass
+        else:
+            t = dict(incar_config[tag]['O'])
+        #write str for tag
+        tstr = ''
+        if type(t) == dict:
+            for s in sym:
+                i = t.get(s,0)
+                tstr += f'{i} '
+        elif type(t) == list:
+            for l in t:
+                tstr += f'{l} '
+        elif type(t) == str:
+            #strip trailing whitespace or commas
+            t = t.strip(' ,')
+            #split if comma-separated
+            if t.find(',') > -1:
+                t = t.split(',')
+                for l in t:
+                    tstr += f'{l} '
+            else:
+                tstr = t
+        #check str length against # of symbols
+        ls = tstr.strip().split(' ')
+        if len(ls) != len(sym):
+            print(f'Length of provided {tag} does not match number of symbols in POSCAR (line 6). Please adjust tag by either adjusting length or providing a dictionary of values. ')
+            sys.exit()
+        #update params with new tag
+        new_params.update({f'{tag}':tstr})
+    #return new params
+    return new_params
 
 # Function to search for .vasp files and generate VASP inputs
 def generate_vasp_inputs_in_dir(root_dir,settings):
