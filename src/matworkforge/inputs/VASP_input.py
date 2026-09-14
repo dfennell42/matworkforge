@@ -35,9 +35,8 @@ def generate_vasp_inputs(vasp_file, custom_incar_params,kpoints):
             new_incar.update({'LDAU':False})
             incar = new_incar
         elif incar['LDAU'] == True:
-            config = MPRelaxSet(structure).config_dict
             #have to update LDAUU, LDAUJ, & LDAUL because the way pymatgen writes them
-            new_params = ldau_tags(poscar, config, custom_incar_params)
+            new_params = ldau_tags(poscar, custom_incar_params)
             incar.update(new_params)
     else:
         pass
@@ -68,10 +67,10 @@ def get_incar_params():
     custom_incar_params = toml.load(param_file)
     return custom_incar_params
 
-def ldau_tags(poscar,config,custom_incar_params):
+def ldau_tags(poscar,custom_incar_params):
     '''gets proper ldau tags for incar'''
     #get incar config
-    incar_config = config['INCAR']
+    incar_config = MPRelaxSet(None).config_dict['INCAR']
     #set tags
     tags = ['LDAUU','LDAUJ','LDAUL']
     #symbols

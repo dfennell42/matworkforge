@@ -33,7 +33,7 @@ def modify_incar(incar_path, root, ignore_sym):
         modified_lines = []
         for line in lines:
             if line.strip().startswith("MAGMOM"):
-                modified_lines.append(magmom_line)
+                modified_lines.append(f'{magmom_line}\n')
             else:
                 modified_lines.append(line)
     else:

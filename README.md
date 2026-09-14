@@ -1,6 +1,6 @@
 # Materials WorkForge CLI
 #### Author: Dorothea Fennell (dfennell1@bnl.gov, dfennell37@gmail.com)
-**Version**: 1.0.1  
+**Version**: 1.0.2  
 
 ---
 ### Important Note:  

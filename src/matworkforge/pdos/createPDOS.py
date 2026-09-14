@@ -47,12 +47,12 @@ def create_pdos(input_dir,pdos_kps):
     elif pdos_kps['style'].lower() == 'monkhorst' or pdos_kps['style'].lower() == 'monkhorst-pack':
         kpt_file = Kpoints.monkhorst_automatic(pdos_kps['kpoint-grid'],pdos_kps['shift'])
     #write kpoints file
-    kpt_file.write_file(os.path.join(input_dir, "KPOINTS"))
+    kpt_file.write_file(os.path.join(output_dir, "KPOINTS"))
     
     #Rename CONTCAR to POSCAR
-    if os.path.exists(f'{input_dir}/PDOS/CONTCAR'):
+    if os.path.exists(f'{output_dir}/CONTCAR'):
         check_contcar(input_dir)
-        os.rename(f'{input_dir}/PDOS/CONTCAR',f'{input_dir}/PDOS/POSCAR')
+        os.rename(f'{output_dir}/CONTCAR',f'{output_dir}/POSCAR')
             
 def process_vasp_inputs(base_directory,settings):
     """Processes all VASP_inputs directories recursively, applying the same modifications to each."""
