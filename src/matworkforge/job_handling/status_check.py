@@ -65,7 +65,11 @@ class StatusCheck:
         elif calc_dir.endswith('_Removed'):
             basename = os.path.basename(calc_dir)
             species = basename.split('_')[0].title()
-            calc_type = f'{species} Vacancy'
+            pair = basename.split('_')[1].title()
+            if pair[-1].isdigit() == True:
+                calc_type = f'{species} {pair} Vacancy'
+            else:
+                calc_type = f'{species} Vacancy'
         elif calc_dir.endswith('_Added'):
             basename = os.path.basename(calc_dir)
             species = basename.split('_')[0].title()

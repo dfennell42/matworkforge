@@ -11,6 +11,7 @@ Changelog:
     7-1-26: Added line to convert list of spin pair tuples to strings
     7-6-26: Rewrote surface cleavage and symmetry checks.
     7-9-26: Fixed spin pairs not writing line breaks.
+    11-2-26: Rewrote to assign inversion pairs using symmetry and to invert added layer in fix_layers.
 """
 #import
 import os
@@ -24,6 +25,7 @@ from pymatgen.core.surface import SlabGenerator
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp import Poscar
+from .list_sites import identify_pairs
 #define functions
 def check_input(user_input):
     if user_input.lower() == 'exit':
@@ -63,43 +65,26 @@ def get_from_mp(mp_id):
         struc = mpi.get_structure_by_material_id(mp_id)
         return struc
 
-def get_idx_pairs(eq_idxs):
-    '''Gets list of inversion symmetric index pairs.'''
-    #pair off indices
-    idx_pairs = []
-    for eq in eq_idxs:
-        #get number of values in set
-        n = len(eq)
-        if n % 2 != 0:
-            print('Odd number of sites in set. Sites will be paired with the exception of the middle site.')
-            h = n // 2
-            for i in range(h):
-                idx_pairs.append([eq[i],eq[-i-1]])
-            #append middle site
-            idx_pairs.append([eq[h]])
-        #pair values
-        else:
-            for i in range(int(n/2)):
-                idx_pairs.append([eq[i],eq[-i-1]])
-    return idx_pairs
-
 def fix_layers(struc):
     '''Fixes struc so cell is inversion symmetric.'''
     cell = struc.to_ase_atoms()
     layer = cut(cell,nlayers=1,tolerance=0.001)
+    #flip layer to keep inversion symmetry
+    coords = layer.get_scaled_positions(wrap=False)
+    inv_coords = []
+    for ar in coords:
+        a = 1-ar[0]
+        b = 1-ar[1]
+        c = ar[2]
+        new_coords = [a,b,c]
+        inv_coords.append(new_coords)
+    inv_coords = np.asarray(inv_coords)
+    layer.set_scaled_positions(inv_coords)
     try:
         new_cell = stack(cell,layer)
     except IncompatibleCellError:
         return None
-        #print('Error raised. A layer of atoms added to the structure to keep inversion symmetry is incompatible with the current cell.')
-        #print('If the layer is added, structure may be overly strained. If the layer is not added, structure will not be inversion symmetric.')
-        #print("Would you like to add the layer? Please answer 'yes' or 'no', or 'exit' if you'd like to quit.")
-        #add_layer = input()
-        #check_input(add_layer)
-        #if add_layer.lower() == 'yes':
-         #   new_cell = stack(cell,layer,maxstrain=None)
-        #elif add_layer.lower() == 'no':
-         #   new_cell = cell
+    #return structure
     new_struc = Structure.from_ase_atoms(new_cell)
     return new_struc
 
@@ -127,7 +112,7 @@ def get_slab(base_dir,bulk,sc_size,miller,vacuum):
     #get refined structure
     ref_struc = SpacegroupAnalyzer(struc).get_refined_structure()
     #make supercell
-    cell = ref_struc.make_supercell(sc_size,in_place=False)
+    cell = ref_struc.make_supercell(sc_size,in_place=False,to_unit_cell=False)
     #get reduced formula for later
     formula = cell.composition.reduced_formula
     #surface cleavage
@@ -162,25 +147,26 @@ def get_slab(base_dir,bulk,sc_size,miller,vacuum):
             else:
                 print('Exiting...')
                 sys.exit()
-    #sort structure by layer
+    #sort structure first
     slab.sort(key=z_coord)
-    #get symmetrized structure & write spin pairs if symmetric
+    #get reordered structure & write spin pairs if symmetric
     if sym == True:
-        spga = SpacegroupAnalyzer(slab)
-        sym_cell = spga.get_symmetrized_structure()
-        eq_idxs = sym_cell.equivalent_indices
         #get idx pairs
-        idx_pairs = get_idx_pairs(eq_idxs)
-        #reorder sites
-        sites = slab.sites
-        site_list = []
-        for [i,j] in idx_pairs:
-            site_list.append(sites[i])
-            site_list.append(sites[j])
-        #create reordered cell
-        reordered_cell = Structure.from_sites(site_list)
-        #write spin pairs if sym
-        write_spin_pairs(base_dir, reordered_cell,formula)
+        idx_pairs = identify_pairs(slab)
+        if type(idx_pairs) == bool:
+            print('Due to lack of symmetry, SpinPairs.txt file not created.')
+            reordered_cell = slab
+        else:
+            #reorder sites
+            sites = slab.sites
+            site_list = []
+            for [i,j] in idx_pairs:
+                site_list.append(sites[i])
+                site_list.append(sites[j])
+            #create reordered cell
+            reordered_cell = Structure.from_sites(site_list)
+            #write spin pairs if sym
+            write_spin_pairs(base_dir, reordered_cell,formula)
     elif sym == False:
         print('Due to lack of symmetry, SpinPairs.txt file not created.')
     #write poscar

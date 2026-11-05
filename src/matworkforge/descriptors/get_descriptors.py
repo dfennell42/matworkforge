@@ -177,7 +177,7 @@ def get_site_desc(base_dir,pdos_dir,vasprun,idxs):
             if row['Atom index'] == i:
                 e_tot = row['Val. e-']
                 ox = row['OS']
-                if 'Spin' in pdos_df.columns():
+                if 'Spin' in pdos_df.columns:
                     spin = row['Spin']
                     #add to dict
                     site_data.update({f'{i}_species':spec,f'{i}_val_e':e_tot,f'{i}_OS':ox,f'{i}_spin':spin})

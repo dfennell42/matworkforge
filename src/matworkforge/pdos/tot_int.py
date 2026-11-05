@@ -50,7 +50,7 @@ def get_all_data(base_dir):
             ele = x_list[0]
             idx = x_list[1]
             atom = f'{ele}{idx}'
-            ser_list = [atom,x_list[2],x_list[3],x_list[4],x_list[5].strip('\n'),'']
+            ser_list = [atom,x_list[2],x_list[3],x_list[4].strip('\n'),'']
             t_data.append(ser_list)
             
         
